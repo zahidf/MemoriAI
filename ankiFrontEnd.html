@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI-Powered Anki Deck Generator</title>
+    <style>
+      :root {
+        --primary-color: #4a6fa5;
+        --secondary-color: #6b8cae;
+        --accent-color: #ff7e5f;
+        --background-color: #f8f9fa;
+        --card-color: #ffffff;
+        --text-color: #333333;
+        --border-radius: 8px;
+        --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --transition: all 0.3s ease;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      body {
+        background-color: var(--background-color);
+        color: var(--text-color);
+        line-height: 1.6;
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 20px 0;
+        border-bottom: 1px solid #eee;
+      }
+
+      h1 {
+        color: var(--primary-color);
+        margin-bottom: 10px;
+      }
+
+      .subtitle {
+        color: var(--secondary-color);
+        font-weight: normal;
+      }
+
+      .container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 30px;
+        justify-content: center;
+      }
+
+      .card {
+        background-color: var(--card-color);
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        padding: 25px;
+        flex: 1;
+        min-width: 300px;
+        max-width: 500px;
+        transition: var(--transition);
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      .card h2 {
+        color: var(--primary-color);
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--accent-color);
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: var(--border-radius);
+        font-size: 16px;
+        transition: var(--transition);
+      }
+
+      input[type="text"]:focus,
+      input[type="number"]:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(74, 111, 165, 0.2);
+      }
+
+      .file-input {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+      }
+
+      .file-input input[type="file"] {
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+      }
+
+      .file-input-label {
+        display: block;
+        padding: 12px;
+        background-color: #f1f3f5;
+        border: 1px dashed #ddd;
+        border-radius: var(--border-radius);
+        text-align: center;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+
+      .file-input:hover .file-input-label {
+        background-color: #e9ecef;
+        border-color: var(--secondary-color);
+      }
+
+      .file-name {
+        margin-top: 8px;
+        font-size: 14px;
+        color: var(--secondary-color);
+      }
+
+      button {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: var(--border-radius);
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: var(--transition);
+        width: 100%;
+      }
+
+      button:hover {
+        background-color: var(--secondary-color);
+      }
+
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+
+      .qa-pair {
+        background-color: #f1f3f5;
+        border-radius: var(--border-radius);
+        padding: 15px;
+        margin-bottom: 15px;
+      }
+
+      .qa-pair h4 {
+        margin-bottom: 8px;
+        color: var(--primary-color);
+      }
+
+      .qa-pair p {
+        margin-bottom: 5px;
+      }
+
+      .qa-list {
+        max-height: 400px;
+        overflow-y: auto;
+        margin-top: 20px;
+      }
+
+      .add-pair-btn {
+        background-color: var(--accent-color);
+        margin-top: 10px;
+      }
+
+      .status-container {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: var(--border-radius);
+        background-color: #f8f9fa;
+        border-left: 4px solid var(--primary-color);
+      }
+
+      .status-title {
+        font-weight: 600;
+        margin-bottom: 5px;
+      }
+
+      .progress-bar {
+        height: 10px;
+        background-color: #e9ecef;
+        border-radius: 5px;
+        margin: 10px 0;
+        overflow: hidden;
+      }
+
+      .progress-bar-fill {
+        height: 100%;
+        background-color: var(--primary-color);
+        width: 0%;
+        transition: width 0.3s ease;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .success {
+        border-left-color: #28a745;
+      }
+
+      .error {
+        border-left-color: #dc3545;
+      }
+
+      .download-btn {
+        background-color: #28a745;
+        margin-top: 15px;
+      }
+
+      .tabs {
+        display: flex;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #ddd;
+      }
+
+      .tab {
+        padding: 10px 20px;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        transition: var(--transition);
+      }
+
+      .tab.active {
+        border-bottom-color: var(--accent-color);
+        font-weight: 600;
+      }
+
+      .tab-content {
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          flex-direction: column;
+        }
+
+        .card {
+          max-width: 100%;
+        }
+      }
+
+      .input-method-toggle {
+        display: flex;
+        margin-bottom: 20px;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        border: 1px solid #ddd;
+      }
+
+      .toggle-option {
+        flex: 1;
+        text-align: center;
+        padding: 10px;
+        cursor: pointer;
+        background-color: #f1f3f5;
+        transition: var(--transition);
+        position: relative;
+      }
+
+      .toggle-option input {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .toggle-option.active {
+        background-color: var(--primary-color);
+        color: white;
+        font-weight: 600;
+      }
+
+      .toggle-option:hover:not(.active) {
+        background-color: #e9ecef;
+      }
+
+      .secondary-btn {
+        background-color: var(--secondary-color);
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: var(--border-radius);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: var(--transition);
+        margin-top: 8px;
+        width: auto;
+        display: inline-block;
+      }
+
+      .secondary-btn:hover {
+        background-color: #5a7b9d;
+      }
+
+      /* Pulse animation for download button */
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+        }
+      }
+
+      .pulse-animation {
+        animation: pulse 1.5s infinite;
+        position: relative;
+        transform: scale(1);
+      }
+
+      /* Make the download container more prominent */
+      #download-container.success {
+        background-color: #d4edda;
+        border-left: 4px solid #28a745;
+        padding: 20px;
+        margin-top: 30px;
+        text-align: center;
+      }
+
+      #download-container {
+        max-width: 600px;
+        margin: 30px auto;
+        border-radius: var(--border-radius);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border: 1px solid #28a745;
+      }
+
+      #download-container .status-title {
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+        color: #28a745;
+      }
+
+      #download-container .download-btn {
+        font-size: 1.1rem;
+        padding: 12px 25px;
+      }
+
+      /* Styling for editable QA pairs */
+      .edit-question,
+      .edit-answer {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: var(--border-radius);
+        font-size: 15px;
+        transition: var(--transition);
+        margin-bottom: 10px;
+        resize: vertical;
+      }
+
+      .edit-question:focus,
+      .edit-answer:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(74, 111, 165, 0.2);
+      }
+
+      .edit-instructions {
+        background-color: #f8f9fa;
+        padding: 10px 15px;
+        border-radius: var(--border-radius);
+        margin-bottom: 15px;
+        border-left: 4px solid var(--accent-color);
+      }
+
+      /* Add a subtle highlight effect to indicate editability */
+      .qa-pair:hover .edit-question,
+      .qa-pair:hover .edit-answer {
+        background-color: #f9f9f9;
+      }
+
+      /* Styling for QA pair header and actions */
+      .qa-pair-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .qa-pair-actions {
+        display: flex;
+        gap: 5px;
+      }
+
+      .icon-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 5px;
+        font-size: 16px;
+        width: auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.7;
+        transition: var(--transition);
+      }
+
+      .icon-btn:hover {
+        opacity: 1;
+        background: none;
+      }
+
+      .remove-pair {
+        color: #dc3545;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>AI-Powered Anki Deck Generator</h1>
+      <p class="subtitle">Create flashcards from PDFs or custom Q&A pairs</p>
+    </header>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="pdf-upload">PDF Upload</div>
+      <div class="tab" data-tab="manual-entry">Manual Entry</div>
+    </div>
+
+    <div class="container">
+      <div class="tab-content active" id="pdf-upload">
+        <div class="card">
+          <h2>Upload PDF</h2>
+          <p>
+            Upload a PDF document to automatically generate question-answer
+            pairs.
+          </p>
+
+          <form id="pdf-form">
+            <div class="form-group">
+              <label>Choose Input Method:</label>
+              <div class="input-method-toggle">
+                <label class="toggle-option active" id="pdf-toggle">
+                  <input type="radio" name="input-method" value="pdf" checked />
+                  PDF Upload
+                </label>
+                <label class="toggle-option" id="text-toggle">
+                  <input type="radio" name="input-method" value="text" />
+                  Direct Text
+                </label>
+              </div>
+            </div>
+
+            <div id="pdf-input-section">
+              <div class="form-group">
+                <label for="pdf-file">Select PDF File</label>
+                <div class="file-input">
+                  <input type="file" id="pdf-file" accept=".pdf" />
+                  <label for="pdf-file" class="file-input-label"
+                    >Choose a file or drag it here</label
+                  >
+                </div>
+                <div class="file-name" id="pdf-file-name"></div>
+              </div>
+            </div>
+
+            <div id="text-input-section" class="hidden">
+              <div class="form-group">
+                <label for="direct-text">Paste Text Directly:</label>
+                <textarea
+                  id="direct-text"
+                  rows="10"
+                  placeholder="Paste your text here"
+                ></textarea>
+                <button type="button" id="clear-text-btn" class="secondary-btn">
+                  Clear Text
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="num-pairs">Number of Q&A Pairs</label>
+              <input
+                type="number"
+                id="num-pairs"
+                min="1"
+                max="50"
+                value="10"
+                required
+              />
+            </div>
+
+            <button type="submit" id="upload-btn">
+              Generate Flashcards from PDF
+            </button>
+            <button
+              type="button"
+              id="test-api-btn"
+              style="margin-top: 10px; background-color: var(--secondary-color)"
+            >
+              Test DeepSeek Connection
+            </button>
+          </form>
+
+          <div class="status-container hidden" id="pdf-status">
+            <div class="status-title">
+              <span id="status-method">PDF</span> Processing Status:
+              <span id="pdf-status-text">Uploading...</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-bar-fill" id="pdf-progress"></div>
+            </div>
+            <p id="pdf-message"></p>
+          </div>
+
+          <div class="status-container hidden" id="api-test-status">
+            <div class="status-title">
+              API Test Result: <span id="api-test-result">Testing...</span>
+            </div>
+            <p id="api-test-message"></p>
+          </div>
+
+          <div class="qa-list hidden" id="pdf-qa-list">
+            <h3>Generated Q&A Pairs</h3>
+            <div id="pdf-qa-pairs"></div>
+            <button id="pdf-create-deck" class="download-btn">
+              Create Anki Deck
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="manual-entry">
+        <div class="card">
+          <h2>Manual Q&A Entry</h2>
+          <p>Create your own question-answer pairs for your Anki deck.</p>
+
+          <form id="manual-form">
+            <div class="form-group">
+              <label for="deck-title">Deck Title</label>
+              <input
+                type="text"
+                id="deck-title"
+                required
+                placeholder="Enter a title for your deck"
+              />
+            </div>
+
+            <div id="qa-pairs-container">
+              <div class="qa-pair" data-index="0">
+                <h4>Pair #1</h4>
+                <div class="form-group">
+                  <label for="question-0">Question</label>
+                  <input
+                    type="text"
+                    id="question-0"
+                    class="question-input"
+                    required
+                    placeholder="Enter your question"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="answer-0">Answer</label>
+                  <textarea
+                    id="answer-0"
+                    class="answer-input"
+                    required
+                    placeholder="Enter your answer"
+                    rows="3"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+
+            <button type="button" id="add-pair" class="add-pair-btn">
+              Add Another Pair
+            </button>
+            <button type="submit" id="create-deck-btn" style="margin-top: 20px">
+              Generate Anki Deck
+            </button>
+          </form>
+
+          <div class="status-container hidden" id="manual-status">
+            <div class="status-title">
+              Processing Status:
+              <span id="manual-status-text">Creating deck...</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-bar-fill" id="manual-progress"></div>
+            </div>
+            <p id="manual-message"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-container hidden" id="download-container">
+      <div class="status-title success">Deck Created Successfully!</div>
+      <p style="margin-bottom: 15px">
+        Your Anki deck has been created and is now ready to download. Click the
+        button below to save your deck to your computer.
+      </p>
+      <div style="text-align: center">
+        <p style="font-weight: bold; margin-bottom: 10px">⬇️ NEXT STEP ⬇️</p>
+        <button id="download-deck" class="download-btn pulse-animation">
+          Download Anki Deck
+        </button>
+      </div>
+    </div>
+
+    <script>
+      // API endpoint base URL
+      const API_BASE_URL = "http://localhost:8000";
+
+      // DOM Elements
+      const pdfForm = document.getElementById("pdf-form");
+      const pdfFileInput = document.getElementById("pdf-file");
+      const pdfFileName = document.getElementById("pdf-file-name");
+      const pdfStatus = document.getElementById("pdf-status");
+      const pdfStatusText = document.getElementById("pdf-status-text");
+      const pdfProgress = document.getElementById("pdf-progress");
+      const pdfMessage = document.getElementById("pdf-message");
+      const pdfQAList = document.getElementById("pdf-qa-list");
+      const pdfQAPairs = document.getElementById("pdf-qa-pairs");
+      const pdfCreateDeck = document.getElementById("pdf-create-deck");
+
+      const manualForm = document.getElementById("manual-form");
+      const addPairBtn = document.getElementById("add-pair");
+      const qaPairsContainer = document.getElementById("qa-pairs-container");
+      const manualStatus = document.getElementById("manual-status");
+      const manualStatusText = document.getElementById("manual-status-text");
+      const manualProgress = document.getElementById("manual-progress");
+      const manualMessage = document.getElementById("manual-message");
+
+      const downloadContainer = document.getElementById("download-container");
+      const downloadDeckBtn = document.getElementById("download-deck");
+
+      const tabs = document.querySelectorAll(".tab");
+      const tabContents = document.querySelectorAll(".tab-content");
+
+      // Current task IDs
+      let currentPdfTaskId = null;
+      let currentDeckTaskId = null;
+
+      // Tab switching
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          // Remove active class from all tabs and contents
+          tabs.forEach((t) => t.classList.remove("active"));
+          tabContents.forEach((c) => c.classList.remove("active"));
+
+          // Add active class to clicked tab and corresponding content
+          tab.classList.add("active");
+          const tabId = tab.getAttribute("data-tab");
+          document.getElementById(tabId).classList.add("active");
+        });
+      });
+
+      // File input handling
+      pdfFileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          pdfFileName.textContent = file.name;
+
+          // Validate file size
+          const fileSizeMB = file.size / (1024 * 1024);
+          if (fileSizeMB > 20) {
+            pdfFileName.innerHTML = `<span style="color: #dc3545;">${
+              file.name
+            } (${fileSizeMB.toFixed(1)} MB) - File is too large!</span>`;
+            alert(
+              "This PDF file is too large (over 20MB). Please upload a smaller file or use the direct text input option."
+            );
+          } else if (fileSizeMB > 10) {
+            pdfFileName.innerHTML = `<span style="color: #ffc107;">${
+              file.name
+            } (${fileSizeMB.toFixed(
+              1
+            )} MB) - Large file, processing may take longer</span>`;
+          } else {
+            pdfFileName.innerHTML = `${file.name} (${fileSizeMB.toFixed(
+              1
+            )} MB)`;
+          }
+        } else {
+          pdfFileName.textContent = "";
+        }
+      });
+
+      // Input method toggle
+      const pdfToggle = document.getElementById("pdf-toggle");
+      const textToggle = document.getElementById("text-toggle");
+      const pdfInputSection = document.getElementById("pdf-input-section");
+      const textInputSection = document.getElementById("text-input-section");
+      const uploadBtn = document.getElementById("upload-btn");
+
+      pdfToggle.addEventListener("click", () => {
+        pdfToggle.classList.add("active");
+        textToggle.classList.remove("active");
+        pdfInputSection.classList.remove("hidden");
+        textInputSection.classList.add("hidden");
+        uploadBtn.textContent = "Generate Flashcards from PDF";
+      });
+
+      textToggle.addEventListener("click", () => {
+        textToggle.classList.add("active");
+        pdfToggle.classList.remove("active");
+        textInputSection.classList.remove("hidden");
+        pdfInputSection.classList.add("hidden");
+        uploadBtn.textContent = "Generate Flashcards from Text";
+      });
+
+      // PDF Form Submission
+      pdfForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const inputMethod = document.querySelector(
+          'input[name="input-method"]:checked'
+        ).value;
+        const file = pdfFileInput.files[0];
+        const directText = document.getElementById("direct-text").value.trim();
+        const numPairs = document.getElementById("num-pairs").value;
+
+        // Validate input based on selected method
+        if (inputMethod === "pdf" && !file) {
+          alert("Please select a PDF file");
+          return;
+        } else if (inputMethod === "pdf" && file.size / (1024 * 1024) > 20) {
+          alert(
+            "This PDF file is too large (over 20MB). Please upload a smaller file or use the direct text input option."
+          );
+          return;
+        } else if (inputMethod === "text" && !directText) {
+          alert("Please enter some text");
+          return;
+        } else if (inputMethod === "text" && directText.length < 100) {
+          alert(
+            "The text is too short. Please provide more content to generate meaningful questions (at least 100 characters)."
+          );
+          return;
+        }
+
+        try {
+          // Show status container
+          pdfStatus.classList.remove("hidden");
+          pdfStatus.classList.remove("error"); // Reset error class
+          pdfStatusText.textContent = "Processing...";
+          pdfProgress.style.width = "0%";
+          pdfQAList.classList.add("hidden");
+
+          // Update status method text
+          document.getElementById("status-method").textContent =
+            inputMethod === "pdf" ? "PDF" : "Text";
+
+          let response;
+
+          if (inputMethod === "pdf") {
+            // If PDF is selected, use the file upload endpoint
+            pdfMessage.textContent = "Uploading PDF file...";
+
+            // Create FormData
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("num_pairs", numPairs);
+
+            // Upload PDF
+            response = await fetch(
+              `${API_BASE_URL}/upload/pdf?num_pairs=${numPairs}`,
+              {
+                method: "POST",
+                body: formData,
+              }
+            );
+          } else {
+            // If direct text is selected, use the text processing endpoint
+            pdfMessage.textContent = "Processing text...";
+
+            // Use the text processing endpoint
+            response = await fetch(`${API_BASE_URL}/process/text`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                text: directText,
+                num_pairs: parseInt(numPairs),
+              }),
+            });
+          }
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          currentPdfTaskId = data.task_id;
+
+          // Start polling for status
+          pollPdfStatus(currentPdfTaskId);
+        } catch (error) {
+          console.error("Error:", error);
+          pdfStatusText.textContent = "Error";
+          pdfMessage.textContent = `Error: ${error.message}`;
+          pdfStatus.classList.add("error");
+        }
+      });
+
+      // Poll for PDF processing status
+      async function pollPdfStatus(taskId) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/status/${taskId}`);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          // Update status display
+          pdfStatusText.textContent = data.status;
+          pdfProgress.style.width = `${data.progress * 100}%`;
+          pdfMessage.textContent = data.message || "";
+
+          if (data.status === "completed") {
+            // Fetch QA pairs
+            fetchQAPairs(taskId);
+          } else if (data.status === "failed") {
+            pdfStatus.classList.add("error");
+
+            // Get current input method
+            const currentInputMethod = document
+              .getElementById("status-method")
+              .textContent.toLowerCase();
+
+            // Display more specific error messages based on the error content
+            if (data.message) {
+              if (data.message.includes("too large")) {
+                pdfMessage.innerHTML = `<strong>Error:</strong> ${data.message}<br>Try compressing your PDF or uploading a smaller document.`;
+              } else if (data.message.includes("too many pages")) {
+                pdfMessage.innerHTML = `<strong>Error:</strong> ${data.message}<br>Try splitting your PDF into smaller sections.`;
+              } else if (
+                data.message.includes("scanned images") ||
+                data.message.includes("text extraction")
+              ) {
+                pdfMessage.innerHTML = `<strong>Error:</strong> ${data.message}<br>Try using the direct text input option instead.`;
+              } else if (data.message.includes("API key")) {
+                pdfMessage.innerHTML = `<strong>Error:</strong> DeepSeek API key is missing or invalid. Please check your server configuration.`;
+              } else if (data.message.includes("too short")) {
+                pdfMessage.innerHTML = `<strong>Error:</strong> The provided text is too short. Please provide more content to generate meaningful questions.`;
+              } else {
+                // Generic error message with the actual error
+                pdfMessage.innerHTML = `<strong>Error processing ${currentInputMethod}:</strong> ${data.message}<br>Please try a different file or use the direct text input option.`;
+              }
+
+              // Add a suggestion to switch to text input
+              if (currentInputMethod === "pdf") {
+                setTimeout(() => {
+                  const switchToTextMsg = document.createElement("div");
+                  switchToTextMsg.className = "switch-to-text-msg";
+                  switchToTextMsg.innerHTML = `
+                    <p style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #ffc107;">
+                      <strong>Tip:</strong> If you're having trouble with PDF processing, you can:
+                      <ul style="margin-top: 5px; margin-bottom: 5px;">
+                        <li>Try a different PDF file</li>
+                        <li>Copy the text from your PDF and <a href="#" id="switch-to-text-link">switch to direct text input</a></li>
+                        <li>Make sure your PDF contains selectable text (not just images)</li>
+                      </ul>
+                    </p>
+                  `;
+                  pdfMessage.appendChild(switchToTextMsg);
+
+                  // Add event listener to switch to text input
+                  document
+                    .getElementById("switch-to-text-link")
+                    .addEventListener("click", (e) => {
+                      e.preventDefault();
+                      textToggle.click();
+                    });
+                }, 500);
+              }
+            } else {
+              pdfMessage.textContent =
+                "An unknown error occurred while processing. Please try again with a different file.";
+            }
+          } else {
+            // Continue polling
+            setTimeout(() => pollPdfStatus(taskId), 1000);
+          }
+        } catch (error) {
+          console.error("Error polling status:", error);
+          pdfStatusText.textContent = "Error";
+          pdfMessage.textContent = `Error checking status: ${error.message}`;
+          pdfStatus.classList.add("error");
+        }
+      }
+
+      // Fetch QA pairs
+      async function fetchQAPairs(taskId) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/qa-pairs/${taskId}`);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          // Display QA pairs
+          pdfQAPairs.innerHTML = "";
+
+          // Add edit instructions
+          const editInstructions = document.createElement("div");
+          editInstructions.className = "edit-instructions";
+          editInstructions.innerHTML = `
+            <p style="margin-bottom: 15px; font-style: italic; color: #666;">
+              You can edit any question or answer below before creating your Anki deck.
+            </p>
+          `;
+          pdfQAPairs.appendChild(editInstructions);
+
+          data.qa_pairs.forEach((pair, index) => {
+            const pairElement = document.createElement("div");
+            pairElement.className = "qa-pair";
+            pairElement.dataset.index = index;
+
+            pairElement.innerHTML = `
+              <div class="qa-pair-header">
+                <h4>Pair #${index + 1}</h4>
+                <div class="qa-pair-actions">
+                  <button type="button" class="icon-btn remove-pair" title="Remove this pair">
+                    ❌
+                  </button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="edit-question-${index}">Question:</label>
+                <textarea id="edit-question-${index}" class="edit-question" rows="2">${
+              pair.question
+            }</textarea>
+              </div>
+              <div class="form-group">
+                <label for="edit-answer-${index}">Answer:</label>
+                <textarea id="edit-answer-${index}" class="edit-answer" rows="3">${
+              pair.answer
+            }</textarea>
+              </div>
+            `;
+
+            pdfQAPairs.appendChild(pairElement);
+
+            // Add event listener for removing pairs
+            pairElement
+              .querySelector(".remove-pair")
+              .addEventListener("click", function () {
+                if (document.querySelectorAll(".qa-pair").length > 1) {
+                  pairElement.remove();
+                  // Update the numbering
+                  updateQAPairNumbers();
+                } else {
+                  alert("You need at least one question-answer pair");
+                }
+              });
+          });
+
+          // Add button to add new pairs
+          const addPairButton = document.createElement("button");
+          addPairButton.type = "button";
+          addPairButton.className = "secondary-btn";
+          addPairButton.style.marginTop = "15px";
+          addPairButton.textContent = "Add New Pair";
+          addPairButton.addEventListener("click", function () {
+            const newIndex = document.querySelectorAll(".qa-pair").length;
+
+            const pairElement = document.createElement("div");
+            pairElement.className = "qa-pair";
+            pairElement.dataset.index = newIndex;
+
+            pairElement.innerHTML = `
+              <div class="qa-pair-header">
+                <h4>Pair #${newIndex + 1}</h4>
+                <div class="qa-pair-actions">
+                  <button type="button" class="icon-btn remove-pair" title="Remove this pair">
+                    ❌
+                  </button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="edit-question-${newIndex}">Question:</label>
+                <textarea id="edit-question-${newIndex}" class="edit-question" rows="2"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="edit-answer-${newIndex}">Answer:</label>
+                <textarea id="edit-answer-${newIndex}" class="edit-answer" rows="3"></textarea>
+              </div>
+            `;
+
+            pdfQAPairs.appendChild(pairElement);
+
+            // Add event listener for removing pairs
+            pairElement
+              .querySelector(".remove-pair")
+              .addEventListener("click", function () {
+                if (document.querySelectorAll(".qa-pair").length > 1) {
+                  pairElement.remove();
+                  // Update the numbering
+                  updateQAPairNumbers();
+                } else {
+                  alert("You need at least one question-answer pair");
+                }
+              });
+
+            // Focus on the new question field
+            pairElement.querySelector(".edit-question").focus();
+          });
+
+          pdfQAPairs.appendChild(addPairButton);
+
+          // Show QA list
+          pdfQAList.classList.remove("hidden");
+
+          // Store QA pairs for deck creation
+          pdfCreateDeck.addEventListener("click", () => {
+            // Collect edited QA pairs
+            const editedQAPairs = [];
+            const questionElements =
+              document.querySelectorAll(".edit-question");
+            const answerElements = document.querySelectorAll(".edit-answer");
+
+            for (let i = 0; i < questionElements.length; i++) {
+              const question = questionElements[i].value.trim();
+              const answer = answerElements[i].value.trim();
+
+              // Only include pairs where both question and answer have content
+              if (question && answer) {
+                editedQAPairs.push({
+                  question: question,
+                  answer: answer,
+                });
+              }
+            }
+
+            if (editedQAPairs.length === 0) {
+              alert("Please provide at least one question-answer pair");
+              return;
+            }
+
+            createDeckFromQAPairs(editedQAPairs);
+          });
+        } catch (error) {
+          console.error("Error fetching QA pairs:", error);
+          pdfStatusText.textContent = "Error";
+          pdfMessage.textContent = `Error fetching QA pairs: ${error.message}`;
+          pdfStatus.classList.add("error");
+        }
+      }
+
+      // Function to update the numbering of QA pairs
+      function updateQAPairNumbers() {
+        const pairs = document.querySelectorAll(".qa-pair");
+        pairs.forEach((pair, index) => {
+          pair.dataset.index = index;
+          pair.querySelector("h4").textContent = `Pair #${index + 1}`;
+
+          // Update IDs to maintain uniqueness
+          const questionTextarea = pair.querySelector(".edit-question");
+          const answerTextarea = pair.querySelector(".edit-answer");
+
+          questionTextarea.id = `edit-question-${index}`;
+          answerTextarea.id = `edit-answer-${index}`;
+        });
+      }
+
+      // Create deck from QA pairs
+      async function createDeckFromQAPairs(qaPairs) {
+        try {
+          // Show status
+          manualStatus.classList.remove("hidden");
+          manualStatusText.textContent = "Creating...";
+          manualProgress.style.width = "0%";
+          manualMessage.textContent = "Creating Anki deck...";
+
+          const title = prompt(
+            "Enter a title for your deck:",
+            "Generated Deck"
+          );
+          if (!title) return;
+
+          const response = await fetch(`${API_BASE_URL}/generate-deck`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: title,
+              qa_pairs: qaPairs,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          currentDeckTaskId = data.task_id;
+
+          // Poll for deck creation status
+          pollDeckStatus(currentDeckTaskId);
+        } catch (error) {
+          console.error("Error creating deck:", error);
+          manualStatusText.textContent = "Error";
+          manualMessage.textContent = `Error creating deck: ${error.message}`;
+          manualStatus.classList.add("error");
+        }
+      }
+
+      // Add QA pair
+      let pairCount = 1;
+      addPairBtn.addEventListener("click", () => {
+        pairCount++;
+        const newPair = document.createElement("div");
+        newPair.className = "qa-pair";
+        newPair.dataset.index = pairCount - 1;
+        newPair.innerHTML = `
+                <h4>Pair #${pairCount}</h4>
+                <div class="form-group">
+                    <label for="question-${pairCount - 1}">Question</label>
+                    <input type="text" id="question-${
+                      pairCount - 1
+                    }" class="question-input" required placeholder="Enter your question">
+                </div>
+                <div class="form-group">
+                    <label for="answer-${pairCount - 1}">Answer</label>
+                    <textarea id="answer-${
+                      pairCount - 1
+                    }" class="answer-input" required placeholder="Enter your answer" rows="3"></textarea>
+                </div>
+            `;
+        qaPairsContainer.appendChild(newPair);
+      });
+
+      // Manual Form Submission
+      manualForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const title = document.getElementById("deck-title").value;
+        const qaPairs = [];
+
+        // Collect all QA pairs
+        const questionInputs = document.querySelectorAll(".question-input");
+        const answerInputs = document.querySelectorAll(".answer-input");
+
+        for (let i = 0; i < questionInputs.length; i++) {
+          const question = questionInputs[i].value.trim();
+          const answer = answerInputs[i].value.trim();
+
+          if (question && answer) {
+            qaPairs.push({
+              question: question,
+              answer: answer,
+            });
+          }
+        }
+
+        if (qaPairs.length === 0) {
+          alert("Please add at least one question-answer pair");
+          return;
+        }
+
+        try {
+          // Show status
+          manualStatus.classList.remove("hidden");
+          manualStatusText.textContent = "Creating...";
+          manualProgress.style.width = "0%";
+          manualMessage.textContent = "Creating Anki deck...";
+
+          const response = await fetch(`${API_BASE_URL}/generate-deck`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: title,
+              qa_pairs: qaPairs,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          currentDeckTaskId = data.task_id;
+
+          // Poll for deck creation status
+          pollDeckStatus(currentDeckTaskId);
+        } catch (error) {
+          console.error("Error creating deck:", error);
+          manualStatusText.textContent = "Error";
+          manualMessage.textContent = `Error creating deck: ${error.message}`;
+          manualStatus.classList.add("error");
+        }
+      });
+
+      // Poll for deck creation status
+      async function pollDeckStatus(taskId) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/status/${taskId}`);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          // Update status display
+          manualStatusText.textContent = data.status;
+          manualProgress.style.width = `${data.progress * 100}%`;
+          manualMessage.textContent = data.message || "";
+
+          if (data.status === "completed") {
+            // Show download button
+            downloadContainer.classList.remove("hidden");
+            downloadContainer.classList.add("success");
+            manualMessage.textContent =
+              "Deck created successfully! Please click the 'Download Anki Deck' button below to save your deck.";
+            manualStatus.classList.add("success");
+
+            // Scroll to the download button to make it obvious
+            downloadContainer.scrollIntoView({ behavior: "smooth" });
+
+            // Add a visual indicator (pulsing effect) to the download button
+            downloadDeckBtn.classList.add("pulse-animation");
+
+            downloadDeckBtn.onclick = () => {
+              window.location.href = `${API_BASE_URL}/download/${taskId}`;
+            };
+          } else if (data.status === "failed") {
+            manualStatus.classList.add("error");
+          } else {
+            // Continue polling
+            setTimeout(() => pollDeckStatus(taskId), 1000);
+          }
+        } catch (error) {
+          console.error("Error polling status:", error);
+          manualStatusText.textContent = "Error";
+          manualMessage.textContent = `Error checking status: ${error.message}`;
+          manualStatus.classList.add("error");
+        }
+      }
+
+      // Test OpenAI Connection
+      document
+        .getElementById("test-api-btn")
+        .addEventListener("click", async () => {
+          const apiTestStatus = document.getElementById("api-test-status");
+          apiTestStatus.classList.remove("hidden");
+          const apiTestResult = document.getElementById("api-test-result");
+          const apiTestMessage = document.getElementById("api-test-message");
+
+          apiTestResult.textContent = "Testing...";
+          apiTestMessage.textContent = "Checking DeepSeek API connection...";
+
+          try {
+            const response = await fetch(`${API_BASE_URL}/test-deepseek`);
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            apiTestResult.textContent = data.status;
+            apiTestMessage.textContent = data.message || "";
+
+            if (data.status === "success") {
+              apiTestStatus.classList.remove("error");
+              apiTestStatus.classList.add("success");
+            } else {
+              apiTestStatus.classList.remove("success");
+              apiTestStatus.classList.add("error");
+            }
+          } catch (error) {
+            console.error("Error testing API:", error);
+            apiTestResult.textContent = "Error";
+            apiTestMessage.textContent = `Error: ${error.message}`;
+            apiTestStatus.classList.remove("success");
+            apiTestStatus.classList.add("error");
+          }
+        });
+
+      // Initialize the page
+      document.addEventListener("DOMContentLoaded", () => {
+        // Set initial button text based on default input method
+        uploadBtn.textContent = "Generate Flashcards from PDF";
+      });
+
+      // Clear text button
+      document
+        .getElementById("clear-text-btn")
+        .addEventListener("click", () => {
+          document.getElementById("direct-text").value = "";
+        });
+    </script>
+  </body>
+</html>
