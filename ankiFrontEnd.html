@@ -3,17 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI-Powered Anki Deck Generator</title>
+    <title>Anki Deck Generator</title>
     <style>
       :root {
-        --primary-color: #4a6fa5;
-        --secondary-color: #6b8cae;
+        --primary-color: #3a7bd5;
+        --secondary-color: #5794e5;
         --accent-color: #ff7e5f;
-        --background-color: #f8f9fa;
+        --background-color: #f7f9fc;
         --card-color: #ffffff;
         --text-color: #333333;
-        --border-radius: 8px;
-        --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --border-radius: 12px;
+        --box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
         --transition: all 0.3s ease;
       }
 
@@ -21,84 +21,263 @@
         margin: 0;
         padding: 0;
         box-sizing: border-box;
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, sans-serif;
       }
 
       body {
         background-color: var(--background-color);
         color: var(--text-color);
         line-height: 1.6;
-        padding: 20px;
-        max-width: 1200px;
-        margin: 0 auto;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
       }
 
       header {
         text-align: center;
-        margin-bottom: 30px;
-        padding: 20px 0;
-        border-bottom: 1px solid #eee;
+        padding: 2rem 0;
+        background-color: var(--card-color);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
       }
 
       h1 {
         color: var(--primary-color);
-        margin-bottom: 10px;
+        font-size: 2rem;
+        font-weight: 600;
       }
 
       .subtitle {
-        color: var(--secondary-color);
-        font-weight: normal;
+        color: #666;
+        font-weight: 400;
+        margin-top: 0.5rem;
       }
 
       .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 2rem;
+        flex-grow: 1;
         display: flex;
-        flex-wrap: wrap;
-        gap: 30px;
+        flex-direction: column;
         justify-content: center;
+      }
+
+      .method-selection {
+        display: flex;
+        justify-content: center;
+        margin: 2rem 0;
+        gap: 1.5rem;
+      }
+
+      .method-card {
+        background-color: var(--card-color);
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: var(--transition);
+        flex: 1;
+        max-width: 200px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid transparent;
+        position: relative; /* Add this for z-index to work */
+        z-index: 1; /* Ensure clickable */
+      }
+
+      .method-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary-color);
+      }
+
+      .method-card h3 {
+        margin: 1rem 0;
+        color: var(--primary-color);
+      }
+
+      .method-card p {
+        color: #666;
+        font-size: 0.9rem;
+      }
+
+      .method-icon {
+        width: 60px;
+        height: 60px;
+        background-color: rgba(58, 123, 213, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+      }
+
+      .method-icon svg {
+        width: 30px;
+        height: 30px;
+        fill: var(--primary-color);
+      }
+
+      .page {
+        display: none;
+      }
+
+      .page.active {
+        display: block;
+        animation: fadeIn 0.5s ease;
       }
 
       .card {
         background-color: var(--card-color);
         border-radius: var(--border-radius);
         box-shadow: var(--box-shadow);
-        padding: 25px;
-        flex: 1;
-        min-width: 300px;
-        max-width: 500px;
-        transition: var(--transition);
-      }
-
-      .card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        padding: 2.5rem;
+        margin-bottom: 2rem;
+        max-width: 1200px;
+        margin-left: auto;
+        margin-right: auto;
       }
 
       .card h2 {
         color: var(--primary-color);
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid var(--accent-color);
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f0f0f0;
+        font-weight: 600;
+      }
+
+      /* Carousel Styles */
+      .carousel-container {
+        margin-top: 2rem;
+        position: relative;
+        overflow: hidden;
+        padding-bottom: 2rem; /* Space for pagination */
+      }
+
+      .carousel-track {
+        display: flex;
+        transition: transform 0.4s ease-in-out;
+      }
+
+      .carousel-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 2rem;
+        gap: 1rem;
+      }
+
+      .carousel-btn {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: var(--transition);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      }
+
+      .carousel-btn:hover {
+        background-color: var(--secondary-color);
+        transform: scale(1.1);
+      }
+
+      .carousel-btn:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .carousel-status {
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--primary-color);
+      }
+
+      .carousel-pagination {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 1rem;
+      }
+
+      .pagination-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #ccc;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+
+      .pagination-dot.active {
+        background-color: var(--primary-color);
+        transform: scale(1.2);
+      }
+
+      /* QA Pair Styles for Carousel */
+      .qa-pair {
+        min-width: 100%;
+        background-color: #fff;
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e0e0e0;
+        position: relative;
+        animation: fadeIn 0.5s ease;
+      }
+
+      .qa-pair::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 12px;
+        width: 30px;
+        height: 8px;
+        background-color: rgba(58, 123, 213, 0.6);
+        border-radius: 0 0 15px 15px;
+      }
+
+      .qa-pair::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 12px;
+        width: 30px;
+        height: 8px;
+        background-color: rgba(58, 123, 213, 0.6);
+        border-radius: 0 0 15px 15px;
       }
 
       .form-group {
-        margin-bottom: 20px;
+        margin-bottom: 1.5rem;
       }
 
       label {
         display: block;
-        margin-bottom: 8px;
-        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
       }
 
       input[type="text"],
       input[type="number"],
       textarea {
         width: 100%;
-        padding: 12px;
+        padding: 0.8rem 1rem;
         border: 1px solid #ddd;
         border-radius: var(--border-radius);
-        font-size: 16px;
+        font-size: 1rem;
         transition: var(--transition);
+        background-color: #f9f9f9;
       }
 
       input[type="text"]:focus,
@@ -106,7 +285,8 @@
       textarea:focus {
         outline: none;
         border-color: var(--primary-color);
-        box-shadow: 0 0 0 2px rgba(74, 111, 165, 0.2);
+        background-color: #fff;
+        box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.1);
       }
 
       .file-input {
@@ -126,38 +306,46 @@
       }
 
       .file-input-label {
-        display: block;
-        padding: 12px;
-        background-color: #f1f3f5;
-        border: 1px dashed #ddd;
+        display: flex;
+        padding: 3rem 2rem;
+        background-color: #f9f9f9;
+        border: 2px dashed #ddd;
         border-radius: var(--border-radius);
         text-align: center;
         cursor: pointer;
         transition: var(--transition);
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
       }
 
       .file-input:hover .file-input-label {
-        background-color: #e9ecef;
-        border-color: var(--secondary-color);
+        border-color: var(--primary-color);
+        background-color: rgba(58, 123, 213, 0.05);
+      }
+
+      .file-icon {
+        margin-bottom: 1rem;
       }
 
       .file-name {
-        margin-top: 8px;
-        font-size: 14px;
-        color: var(--secondary-color);
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        color: #666;
       }
 
       button {
         background-color: var(--primary-color);
         color: white;
         border: none;
-        padding: 12px 20px;
+        padding: 0.8rem 1.5rem;
         border-radius: var(--border-radius);
         cursor: pointer;
-        font-size: 16px;
-        font-weight: 600;
+        font-size: 1rem;
+        font-weight: 500;
         transition: var(--transition);
         width: 100%;
+        margin-top: 1rem;
       }
 
       button:hover {
@@ -169,63 +357,69 @@
         cursor: not-allowed;
       }
 
-      .qa-pair {
-        background-color: #f1f3f5;
-        border-radius: var(--border-radius);
-        padding: 15px;
-        margin-bottom: 15px;
+      .btn-secondary {
+        background-color: #f0f0f0;
+        color: #333;
       }
 
-      .qa-pair h4 {
-        margin-bottom: 8px;
+      .btn-secondary:hover {
+        background-color: #e0e0e0;
+      }
+
+      .add-card-btn {
+        background-color: white;
         color: var(--primary-color);
+        border: 2px dashed var(--primary-color);
+        padding: 1rem;
+        border-radius: var(--border-radius);
+        cursor: pointer;
+        font-weight: 500;
+        transition: var(--transition);
+        display: block;
+        width: 100%;
+        max-width: 280px;
+        margin: 2rem auto 0;
+        text-align: center;
       }
 
-      .qa-pair p {
-        margin-bottom: 5px;
-      }
-
-      .qa-list {
-        max-height: 400px;
-        overflow-y: auto;
-        margin-top: 20px;
-      }
-
-      .add-pair-btn {
-        background-color: var(--accent-color);
-        margin-top: 10px;
+      .add-card-btn:hover {
+        background-color: rgba(58, 123, 213, 0.05);
       }
 
       .status-container {
-        margin-top: 20px;
-        padding: 15px;
+        margin-top: 2rem;
+        padding: 1.5rem;
         border-radius: var(--border-radius);
         background-color: #f8f9fa;
         border-left: 4px solid var(--primary-color);
+        text-align: center;
       }
 
       .status-title {
         font-weight: 600;
-        margin-bottom: 5px;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+      }
+
+      .progress-container {
+        height: 8px;
+        background-color: #e9ecef;
+        border-radius: 5px;
+        margin: 1.5rem 0;
+        overflow: hidden;
+        position: relative;
       }
 
       .progress-bar {
-        height: 10px;
-        background-color: #e9ecef;
-        border-radius: 5px;
-        margin: 10px 0;
-        overflow: hidden;
-      }
-
-      .progress-bar-fill {
         height: 100%;
         background-color: var(--primary-color);
         width: 0%;
-        transition: width 0.3s ease;
+        transition: width 0.5s ease;
+        position: relative;
       }
 
       .hidden {
-        display: none;
+        display: none !important;
       }
 
       .success {
@@ -236,231 +430,378 @@
         border-left-color: #dc3545;
       }
 
+      .btn-back {
+        background-color: transparent;
+        color: var(--primary-color);
+        border: 1px solid var(--primary-color);
+        margin-right: 1rem;
+      }
+
+      .btn-back:hover {
+        background-color: rgba(58, 123, 213, 0.1);
+      }
+
+      .actions {
+        display: flex;
+        margin-top: 2rem;
+      }
+
       .download-btn {
         background-color: #28a745;
-        margin-top: 15px;
       }
 
-      .tabs {
-        display: flex;
-        margin-bottom: 20px;
-        border-bottom: 1px solid #ddd;
+      .download-btn:hover {
+        background-color: #218838;
       }
 
-      .tab {
-        padding: 10px 20px;
-        cursor: pointer;
-        border-bottom: 3px solid transparent;
-        transition: var(--transition);
-      }
-
-      .tab.active {
-        border-bottom-color: var(--accent-color);
-        font-weight: 600;
-      }
-
-      .tab-content {
+      /* Loading animation */
+      .loading-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.9);
         display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
       }
 
-      .tab-content.active {
-        display: block;
-      }
-
-      @media (max-width: 768px) {
-        .container {
-          flex-direction: column;
-        }
-
-        .card {
-          max-width: 100%;
-        }
-      }
-
-      .input-method-toggle {
+      .loading-container.show {
         display: flex;
-        margin-bottom: 20px;
-        border-radius: var(--border-radius);
-        overflow: hidden;
-        border: 1px solid #ddd;
       }
 
-      .toggle-option {
-        flex: 1;
-        text-align: center;
-        padding: 10px;
-        cursor: pointer;
-        background-color: #f1f3f5;
-        transition: var(--transition);
+      .flashcard-loader {
         position: relative;
+        width: 200px;
+        height: 120px;
+        perspective: 600px;
+        margin-bottom: 2rem;
       }
 
-      .toggle-option input {
+      .flashcard {
         position: absolute;
-        opacity: 0;
-        cursor: pointer;
+        width: 100%;
+        height: 100%;
+        transform-style: preserve-3d;
+        animation: cardFlip 3s infinite ease-in-out;
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
       }
 
-      .toggle-option.active {
+      .flashcard-front,
+      .flashcard-back {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        backface-visibility: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 1.2rem;
+        padding: 1.5rem;
+        text-align: center;
+      }
+
+      .flashcard-front {
+        background-color: white;
+        color: var(--primary-color);
+      }
+
+      .flashcard-back {
         background-color: var(--primary-color);
         color: white;
-        font-weight: 600;
+        transform: rotateY(180deg);
       }
 
-      .toggle-option:hover:not(.active) {
-        background-color: #e9ecef;
-      }
-
-      .secondary-btn {
-        background-color: var(--secondary-color);
-        color: white;
-        border: none;
-        padding: 8px 12px;
-        border-radius: var(--border-radius);
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        transition: var(--transition);
-        margin-top: 8px;
-        width: auto;
-        display: inline-block;
-      }
-
-      .secondary-btn:hover {
-        background-color: #5a7b9d;
-      }
-
-      /* Pulse animation for download button */
-      @keyframes pulse {
-        0% {
-          box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+      @keyframes cardFlip {
+        0%,
+        20% {
+          transform: rotateY(0);
         }
+        45%,
         70% {
-          box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+          transform: rotateY(180deg);
         }
+        95%,
         100% {
-          box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+          transform: rotateY(0);
         }
       }
 
-      .pulse-animation {
-        animation: pulse 1.5s infinite;
-        position: relative;
-        transform: scale(1);
-      }
-
-      /* Make the download container more prominent */
-      #download-container.success {
-        background-color: #d4edda;
-        border-left: 4px solid #28a745;
-        padding: 20px;
-        margin-top: 30px;
-        text-align: center;
-      }
-
-      #download-container {
-        max-width: 600px;
-        margin: 30px auto;
-        border-radius: var(--border-radius);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        border: 1px solid #28a745;
-      }
-
-      #download-container .status-title {
+      .loading-text {
         font-size: 1.2rem;
-        margin-bottom: 15px;
-        color: #28a745;
+        color: var(--primary-color);
+        margin-top: 1rem;
       }
 
-      #download-container .download-btn {
-        font-size: 1.1rem;
-        padding: 12px 25px;
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
       }
 
-      /* Styling for editable QA pairs */
       .edit-question,
       .edit-answer {
         width: 100%;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: var(--border-radius);
-        font-size: 15px;
+        padding: 0.8rem;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        font-size: 0.95rem;
         transition: var(--transition);
-        margin-bottom: 10px;
+        margin-bottom: 0.8rem;
         resize: vertical;
+        background-color: #fcfcfc;
+        min-height: 70px;
+      }
+
+      .edit-question {
+        border-bottom: 2px dashed #ccc;
       }
 
       .edit-question:focus,
       .edit-answer:focus {
         outline: none;
         border-color: var(--primary-color);
-        box-shadow: 0 0 0 2px rgba(74, 111, 165, 0.2);
+        box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.1);
+        background-color: white;
       }
 
-      .edit-instructions {
-        background-color: #f8f9fa;
-        padding: 10px 15px;
-        border-radius: var(--border-radius);
-        margin-bottom: 15px;
-        border-left: 4px solid var(--accent-color);
-      }
-
-      /* Add a subtle highlight effect to indicate editability */
-      .qa-pair:hover .edit-question,
-      .qa-pair:hover .edit-answer {
-        background-color: #f9f9f9;
-      }
-
-      /* Styling for QA pair header and actions */
       .qa-pair-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 10px;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #f1f1f1;
       }
 
-      .qa-pair-actions {
-        display: flex;
-        gap: 5px;
-      }
-
-      .icon-btn {
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 5px;
-        font-size: 16px;
-        width: auto;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0.7;
-        transition: var(--transition);
-      }
-
-      .icon-btn:hover {
-        opacity: 1;
-        background: none;
+      .qa-pair-num {
+        font-weight: 600;
+        color: var(--primary-color);
+        font-size: 0.9rem;
+        background-color: rgba(58, 123, 213, 0.1);
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
       }
 
       .remove-pair {
+        background: none;
+        border: none;
         color: #dc3545;
+        cursor: pointer;
+        width: auto;
+        padding: 0.3rem;
+        margin: 0;
+        font-size: 1.1rem;
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+      }
+
+      .remove-pair:hover {
+        opacity: 1;
+      }
+
+      /* For direct text input page */
+      .direct-text-wrap {
+        position: relative;
+      }
+
+      .word-count {
+        position: absolute;
+        bottom: 0.5rem;
+        right: 0.5rem;
+        font-size: 0.8rem;
+        color: #666;
+      }
+
+      /* Notification for deck creation */
+      .notification {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background-color: #28a745;
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        z-index: 1000;
+      }
+
+      .notification.show {
+        opacity: 1;
+      }
+
+      /* View toggle styles */
+      .view-toggle {
+        display: flex;
+        justify-content: center;
+        margin: 1.5rem 0;
+        gap: 1rem;
+      }
+
+      .view-btn {
+        background-color: #f0f0f0;
+        color: #333;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: var(--border-radius);
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: var(--transition);
+        width: auto;
+        margin-top: 0;
+      }
+
+      .view-btn.active {
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      .view-btn:hover:not(.active) {
+        background-color: #e0e0e0;
+      }
+
+      /* Grid layout styles */
+      .grid-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+        max-height: 70vh;
+        overflow-y: auto;
+        padding: 0.5rem;
+      }
+
+      .grid-item {
+        background-color: #fff;
+        border-radius: var(--border-radius);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e0e0e0;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+
+      .grid-item::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 12px;
+        width: 30px;
+        height: 8px;
+        background-color: rgba(58, 123, 213, 0.6);
+        border-radius: 0 0 15px 15px;
+      }
+
+      .grid-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #f1f1f1;
+      }
+
+      .grid-item .qa-pair-num {
+        font-size: 0.8rem;
+      }
+
+      .grid-item .edit-question,
+      .grid-item .edit-answer {
+        min-height: 60px;
+      }
+
+      /* Mobile responsiveness */
+      @media (max-width: 768px) {
+        .container {
+          padding: 1rem;
+        }
+
+        .card {
+          padding: 1.5rem;
+        }
+
+        .method-selection {
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .method-card {
+          max-width: 100%;
+          width: 100%;
+        }
+
+        .grid-container {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
   <body>
     <header>
-      <h1>AI-Powered Anki Deck Generator</h1>
-      <p class="subtitle">Create flashcards from PDFs or custom Q&A pairs</p>
+      <h1>Anki Deck Generator</h1>
+      <p class="subtitle">
+        Create flashcards easily from PDFs or custom content
+      </p>
     </header>
 
-    <div class="tabs">
-      <div class="tab active" data-tab="pdf-upload">PDF Upload</div>
-      <div class="tab" data-tab="manual-entry">Manual Entry</div>
-    </div>
-
     <div class="container">
-      <div class="tab-content active" id="pdf-upload">
+      <!-- Method Selection Page -->
+      <div class="page active" id="method-selection">
+        <div class="method-selection">
+          <div class="method-card" id="pdf-method">
+            <div class="method-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path
+                  d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M9,13H7V11H9V13M9,17H7V15H9V17M16,13H11V11H16V13M16,17H11V15H16V17Z"
+                />
+              </svg>
+            </div>
+            <h3>PDF Upload</h3>
+            <p>Generate flashcards from your PDF documents</p>
+          </div>
+
+          <div class="method-card" id="text-method">
+            <div class="method-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path
+                  d="M19 5V19H5V5H19M21 3H3V21H21V3M17 17H7V16H17V17M17 15H7V14H17V15M17 12H7V7H17V12Z"
+                />
+              </svg>
+            </div>
+            <h3>Direct Text</h3>
+            <p>Create flashcards from your own text</p>
+          </div>
+
+          <div class="method-card" id="manual-method">
+            <div class="method-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path
+                  d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"
+                />
+              </svg>
+            </div>
+            <h3>Manual Entry</h3>
+            <p>Create custom question-answer pairs</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- PDF Upload Page -->
+      <div class="page" id="pdf-upload">
         <div class="card">
           <h2>Upload PDF</h2>
           <p>
@@ -470,48 +811,32 @@
 
           <form id="pdf-form">
             <div class="form-group">
-              <label>Choose Input Method:</label>
-              <div class="input-method-toggle">
-                <label class="toggle-option active" id="pdf-toggle">
-                  <input type="radio" name="input-method" value="pdf" checked />
-                  PDF Upload
+              <div class="file-input">
+                <input type="file" id="pdf-file" accept=".pdf" />
+                <label for="pdf-file" class="file-input-label">
+                  <div class="file-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24">
+                      <path
+                        fill="#3a7bd5"
+                        d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"
+                      />
+                      <path
+                        fill="#3a7bd5"
+                        d="M12,17V14H13V13H10V14H11V17H10V18H13V17H12Z"
+                      />
+                      <path fill="#3a7bd5" d="M14,9H13V11H14V9Z" />
+                      <path fill="#3a7bd5" d="M9,9H10.5V11H9V9Z" />
+                      <path fill="#3a7bd5" d="M9,13H10V14H9V13Z" />
+                    </svg>
+                  </div>
+                  <span>Choose a PDF file or drag it here</span>
                 </label>
-                <label class="toggle-option" id="text-toggle">
-                  <input type="radio" name="input-method" value="text" />
-                  Direct Text
-                </label>
               </div>
-            </div>
-
-            <div id="pdf-input-section">
-              <div class="form-group">
-                <label for="pdf-file">Select PDF File</label>
-                <div class="file-input">
-                  <input type="file" id="pdf-file" accept=".pdf" />
-                  <label for="pdf-file" class="file-input-label"
-                    >Choose a file or drag it here</label
-                  >
-                </div>
-                <div class="file-name" id="pdf-file-name"></div>
-              </div>
-            </div>
-
-            <div id="text-input-section" class="hidden">
-              <div class="form-group">
-                <label for="direct-text">Paste Text Directly:</label>
-                <textarea
-                  id="direct-text"
-                  rows="10"
-                  placeholder="Paste your text here"
-                ></textarea>
-                <button type="button" id="clear-text-btn" class="secondary-btn">
-                  Clear Text
-                </button>
-              </div>
+              <div class="file-name" id="pdf-file-name"></div>
             </div>
 
             <div class="form-group">
-              <label for="num-pairs">Number of Q&A Pairs</label>
+              <label for="num-pairs">Number of Q&A Pairs to Generate</label>
               <input
                 type="number"
                 id="num-pairs"
@@ -522,47 +847,62 @@
               />
             </div>
 
-            <button type="submit" id="upload-btn">
-              Generate Flashcards from PDF
-            </button>
-            <button
-              type="button"
-              id="test-api-btn"
-              style="margin-top: 10px; background-color: var(--secondary-color)"
-            >
-              Test DeepSeek Connection
-            </button>
+            <div class="actions">
+              <button type="button" class="btn-back" id="pdf-back-btn">
+                Back
+              </button>
+              <button type="submit" id="upload-btn">Generate Flashcards</button>
+            </div>
           </form>
-
-          <div class="status-container hidden" id="pdf-status">
-            <div class="status-title">
-              <span id="status-method">PDF</span> Processing Status:
-              <span id="pdf-status-text">Uploading...</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-bar-fill" id="pdf-progress"></div>
-            </div>
-            <p id="pdf-message"></p>
-          </div>
-
-          <div class="status-container hidden" id="api-test-status">
-            <div class="status-title">
-              API Test Result: <span id="api-test-result">Testing...</span>
-            </div>
-            <p id="api-test-message"></p>
-          </div>
-
-          <div class="qa-list hidden" id="pdf-qa-list">
-            <h3>Generated Q&A Pairs</h3>
-            <div id="pdf-qa-pairs"></div>
-            <button id="pdf-create-deck" class="download-btn">
-              Create Anki Deck
-            </button>
-          </div>
         </div>
       </div>
 
-      <div class="tab-content" id="manual-entry">
+      <!-- Direct Text Page -->
+      <div class="page" id="text-input">
+        <div class="card">
+          <h2>Direct Text Input</h2>
+          <p>Enter or paste your text to generate question-answer pairs.</p>
+
+          <form id="text-form">
+            <div class="form-group">
+              <label for="direct-text">Paste Your Text</label>
+              <div class="direct-text-wrap">
+                <textarea
+                  id="direct-text"
+                  rows="12"
+                  placeholder="Paste your text here (minimum 100 characters)"
+                  required
+                ></textarea>
+                <div class="word-count">0 characters</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="text-num-pairs"
+                >Number of Q&A Pairs to Generate</label
+              >
+              <input
+                type="number"
+                id="text-num-pairs"
+                min="1"
+                max="50"
+                value="10"
+                required
+              />
+            </div>
+
+            <div class="actions">
+              <button type="button" class="btn-back" id="text-back-btn">
+                Back
+              </button>
+              <button type="submit">Generate Flashcards</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Manual Entry Page -->
+      <div class="page" id="manual-entry">
         <div class="card">
           <h2>Manual Q&A Entry</h2>
           <p>Create your own question-answer pairs for your Anki deck.</p>
@@ -579,8 +919,10 @@
             </div>
 
             <div id="qa-pairs-container">
-              <div class="qa-pair" data-index="0">
-                <h4>Pair #1</h4>
+              <div class="qa-pair">
+                <div class="qa-pair-header">
+                  <div class="qa-pair-num">Card #1</div>
+                </div>
                 <div class="form-group">
                   <label for="question-0">Question</label>
                   <input
@@ -604,729 +946,1168 @@
               </div>
             </div>
 
-            <button type="button" id="add-pair" class="add-pair-btn">
-              Add Another Pair
+            <button type="button" id="add-pair" class="add-card-btn">
+              + Add Another Flashcard
             </button>
-            <button type="submit" id="create-deck-btn" style="margin-top: 20px">
-              Generate Anki Deck
-            </button>
-          </form>
 
-          <div class="status-container hidden" id="manual-status">
-            <div class="status-title">
-              Processing Status:
-              <span id="manual-status-text">Creating deck...</span>
+            <div class="actions">
+              <button type="button" class="btn-back" id="manual-back-btn">
+                Back
+              </button>
+              <button type="submit" id="create-deck-btn">
+                Generate Anki Deck
+              </button>
             </div>
-            <div class="progress-bar">
-              <div class="progress-bar-fill" id="manual-progress"></div>
+          </form>
+        </div>
+      </div>
+
+      <!-- QA Review Page -->
+      <div class="page" id="qa-review">
+        <div class="card">
+          <h2>Review Generated Flashcards</h2>
+          <p>Review and edit your flashcards before creating your Anki deck.</p>
+
+          <!-- View toggle buttons -->
+          <div class="view-toggle">
+            <button id="carousel-view-btn" class="view-btn active">
+              Carousel View
+            </button>
+            <button id="grid-view-btn" class="view-btn">Grid View</button>
+          </div>
+
+          <!-- Carousel Container -->
+          <div class="carousel-container" id="flashcard-carousel">
+            <div class="carousel-track" id="carousel-track">
+              <!-- Cards will be inserted here by JavaScript -->
             </div>
-            <p id="manual-message"></p>
+
+            <div class="carousel-controls">
+              <button class="carousel-btn" id="prev-btn" disabled>&lt;</button>
+              <div class="carousel-status">
+                Card <span id="current-card">1</span> of
+                <span id="total-cards">10</span>
+              </div>
+              <button class="carousel-btn" id="next-btn">&gt;</button>
+            </div>
+
+            <div class="carousel-pagination" id="carousel-pagination">
+              <!-- Pagination dots will be added here -->
+            </div>
+
+            <button type="button" id="add-new-card" class="add-card-btn">
+              + Add New Flashcard
+            </button>
+          </div>
+
+          <!-- Grid Container (initially hidden) -->
+          <div class="grid-container hidden" id="flashcard-grid">
+            <!-- Cards will be inserted here by JavaScript -->
+          </div>
+
+          <button
+            type="button"
+            id="grid-add-new-card"
+            class="add-card-btn hidden"
+          >
+            + Add New Flashcard
+          </button>
+
+          <div class="actions">
+            <button type="button" class="btn-back" id="review-back-btn">
+              Back
+            </button>
+            <button id="create-deck-from-qa" class="download-btn">
+              Create Anki Deck
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Download Page -->
+      <div class="page" id="download-page">
+        <div class="card">
+          <h2>Your Anki Deck is Ready!</h2>
+          <div class="status-container success">
+            <div class="status-title">Deck Created Successfully!</div>
+            <p>Your Anki deck has been created and is now ready to download.</p>
+            <button id="download-deck" class="download-btn">
+              Download Anki Deck
+            </button>
+            <p style="margin-top: 1.5rem">
+              <button id="start-over-btn" class="btn-secondary">
+                Create Another Deck
+              </button>
+            </p>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="status-container hidden" id="download-container">
-      <div class="status-title success">Deck Created Successfully!</div>
-      <p style="margin-bottom: 15px">
-        Your Anki deck has been created and is now ready to download. Click the
-        button below to save your deck to your computer.
-      </p>
-      <div style="text-align: center">
-        <p style="font-weight: bold; margin-bottom: 10px">⬇️ NEXT STEP ⬇️</p>
-        <button id="download-deck" class="download-btn pulse-animation">
-          Download Anki Deck
-        </button>
+    <!-- Loading Animation -->
+    <div class="loading-container" id="loading-container">
+      <div class="flashcard-loader">
+        <div class="flashcard">
+          <div class="flashcard-front">Creating Flashcards...</div>
+          <div class="flashcard-back">Processing Content</div>
+        </div>
+      </div>
+      <div class="loading-text" id="loading-text">
+        Analyzing your content...
       </div>
     </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">Deck created successfully!</div>
 
     <script>
       // API endpoint base URL
       const API_BASE_URL = "http://localhost:8000";
 
-      // DOM Elements
-      const pdfForm = document.getElementById("pdf-form");
-      const pdfFileInput = document.getElementById("pdf-file");
-      const pdfFileName = document.getElementById("pdf-file-name");
-      const pdfStatus = document.getElementById("pdf-status");
-      const pdfStatusText = document.getElementById("pdf-status-text");
-      const pdfProgress = document.getElementById("pdf-progress");
-      const pdfMessage = document.getElementById("pdf-message");
-      const pdfQAList = document.getElementById("pdf-qa-list");
-      const pdfQAPairs = document.getElementById("pdf-qa-pairs");
-      const pdfCreateDeck = document.getElementById("pdf-create-deck");
+      // Wait for DOM to be fully loaded before attaching event listeners
+      document.addEventListener("DOMContentLoaded", function () {
+        console.log("DOM fully loaded");
 
-      const manualForm = document.getElementById("manual-form");
-      const addPairBtn = document.getElementById("add-pair");
-      const qaPairsContainer = document.getElementById("qa-pairs-container");
-      const manualStatus = document.getElementById("manual-status");
-      const manualStatusText = document.getElementById("manual-status-text");
-      const manualProgress = document.getElementById("manual-progress");
-      const manualMessage = document.getElementById("manual-message");
+        // DOM Elements
+        const methodSelection = document.getElementById("method-selection");
+        const pdfUpload = document.getElementById("pdf-upload");
+        const textInput = document.getElementById("text-input");
+        const manualEntry = document.getElementById("manual-entry");
+        const qaReview = document.getElementById("qa-review");
+        const downloadPage = document.getElementById("download-page");
+        const loadingContainer = document.getElementById("loading-container");
+        const loadingText = document.getElementById("loading-text");
 
-      const downloadContainer = document.getElementById("download-container");
-      const downloadDeckBtn = document.getElementById("download-deck");
+        // Carousel Elements
+        const carouselTrack = document.getElementById("carousel-track");
+        const prevBtn = document.getElementById("prev-btn");
+        const nextBtn = document.getElementById("next-btn");
+        const currentCardSpan = document.getElementById("current-card");
+        const totalCardsSpan = document.getElementById("total-cards");
+        const carouselPagination = document.getElementById(
+          "carousel-pagination"
+        );
+        const addNewCardBtn = document.getElementById("add-new-card");
 
-      const tabs = document.querySelectorAll(".tab");
-      const tabContents = document.querySelectorAll(".tab-content");
+        // Grid Elements
+        const carouselViewBtn = document.getElementById("carousel-view-btn");
+        const gridViewBtn = document.getElementById("grid-view-btn");
+        const carouselContainer = document.getElementById("flashcard-carousel");
+        const gridContainer = document.getElementById("flashcard-grid");
+        const gridAddNewCardBtn = document.getElementById("grid-add-new-card");
 
-      // Current task IDs
-      let currentPdfTaskId = null;
-      let currentDeckTaskId = null;
+        // Carousel state
+        let currentIndex = 0;
+        let allCards = [];
 
-      // Tab switching
-      tabs.forEach((tab) => {
-        tab.addEventListener("click", () => {
-          // Remove active class from all tabs and contents
-          tabs.forEach((t) => t.classList.remove("active"));
-          tabContents.forEach((c) => c.classList.remove("active"));
+        async function pollPdfStatus(taskId, source = "pdf") {
+          try {
+            const response = await fetch(`${API_BASE_URL}/status/${taskId}`);
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
-          // Add active class to clicked tab and corresponding content
-          tab.classList.add("active");
-          const tabId = tab.getAttribute("data-tab");
-          document.getElementById(tabId).classList.add("active");
-        });
-      });
+            const data = await response.json();
 
-      // File input handling
-      pdfFileInput.addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          pdfFileName.textContent = file.name;
+            // Update loading text
+            if (data.message) {
+              loadingText.textContent = data.message;
+            }
 
-          // Validate file size
-          const fileSizeMB = file.size / (1024 * 1024);
-          if (fileSizeMB > 20) {
-            pdfFileName.innerHTML = `<span style="color: #dc3545;">${
-              file.name
-            } (${fileSizeMB.toFixed(1)} MB) - File is too large!</span>`;
-            alert(
-              "This PDF file is too large (over 20MB). Please upload a smaller file or use the direct text input option."
-            );
-          } else if (fileSizeMB > 10) {
-            pdfFileName.innerHTML = `<span style="color: #ffc107;">${
-              file.name
-            } (${fileSizeMB.toFixed(
-              1
-            )} MB) - Large file, processing may take longer</span>`;
-          } else {
-            pdfFileName.innerHTML = `${file.name} (${fileSizeMB.toFixed(
-              1
-            )} MB)`;
+            if (data.status === "completed") {
+              // Fetch QA pairs
+              fetchQAPairs(taskId, source);
+            } else if (data.status === "failed") {
+              loadingContainer.classList.remove("show");
+              alert(
+                `Error: ${
+                  data.message || "An error occurred during processing."
+                }`
+              );
+            } else {
+              // Continue polling
+              setTimeout(() => pollPdfStatus(taskId, source), 1000);
+            }
+          } catch (error) {
+            console.error("Error polling status:", error);
+            loadingContainer.classList.remove("show");
+            alert(`Error checking status: ${error.message}`);
           }
-        } else {
-          pdfFileName.textContent = "";
-        }
-      });
-
-      // Input method toggle
-      const pdfToggle = document.getElementById("pdf-toggle");
-      const textToggle = document.getElementById("text-toggle");
-      const pdfInputSection = document.getElementById("pdf-input-section");
-      const textInputSection = document.getElementById("text-input-section");
-      const uploadBtn = document.getElementById("upload-btn");
-
-      pdfToggle.addEventListener("click", () => {
-        pdfToggle.classList.add("active");
-        textToggle.classList.remove("active");
-        pdfInputSection.classList.remove("hidden");
-        textInputSection.classList.add("hidden");
-        uploadBtn.textContent = "Generate Flashcards from PDF";
-      });
-
-      textToggle.addEventListener("click", () => {
-        textToggle.classList.add("active");
-        pdfToggle.classList.remove("active");
-        textInputSection.classList.remove("hidden");
-        pdfInputSection.classList.add("hidden");
-        uploadBtn.textContent = "Generate Flashcards from Text";
-      });
-
-      // PDF Form Submission
-      pdfForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const inputMethod = document.querySelector(
-          'input[name="input-method"]:checked'
-        ).value;
-        const file = pdfFileInput.files[0];
-        const directText = document.getElementById("direct-text").value.trim();
-        const numPairs = document.getElementById("num-pairs").value;
-
-        // Validate input based on selected method
-        if (inputMethod === "pdf" && !file) {
-          alert("Please select a PDF file");
-          return;
-        } else if (inputMethod === "pdf" && file.size / (1024 * 1024) > 20) {
-          alert(
-            "This PDF file is too large (over 20MB). Please upload a smaller file or use the direct text input option."
-          );
-          return;
-        } else if (inputMethod === "text" && !directText) {
-          alert("Please enter some text");
-          return;
-        } else if (inputMethod === "text" && directText.length < 100) {
-          alert(
-            "The text is too short. Please provide more content to generate meaningful questions (at least 100 characters)."
-          );
-          return;
         }
 
-        try {
-          // Show status container
-          pdfStatus.classList.remove("hidden");
-          pdfStatus.classList.remove("error"); // Reset error class
-          pdfStatusText.textContent = "Processing...";
-          pdfProgress.style.width = "0%";
-          pdfQAList.classList.add("hidden");
+        // Also add fetchQAPairs function
+        async function fetchQAPairs(taskId, source) {
+          try {
+            const response = await fetch(`${API_BASE_URL}/qa-pairs/${taskId}`);
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
-          // Update status method text
-          document.getElementById("status-method").textContent =
-            inputMethod === "pdf" ? "PDF" : "Text";
+            const data = await response.json();
 
-          let response;
+            // Store all QA pairs
+            allCards = data.qa_pairs;
 
-          if (inputMethod === "pdf") {
-            // If PDF is selected, use the file upload endpoint
-            pdfMessage.textContent = "Uploading PDF file...";
+            // Set up carousel
+            setupCarousel(allCards, source, taskId);
 
-            // Create FormData
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("num_pairs", numPairs);
+            // Hide loading and show QA review page
+            loadingContainer.classList.remove("show");
+            showPage(qaReview);
+          } catch (error) {
+            console.error("Error fetching QA pairs:", error);
+            loadingContainer.classList.remove("show");
+            alert(`Error fetching QA pairs: ${error.message}`);
+          }
+        }
 
-            // Upload PDF
-            response = await fetch(
-              `${API_BASE_URL}/upload/pdf?num_pairs=${numPairs}`,
-              {
-                method: "POST",
-                body: formData,
+        // Helper function to switch pages
+        function showPage(page) {
+          console.log("Showing page:", page.id);
+          // Hide all pages
+          const pages = document.querySelectorAll(".page");
+          pages.forEach((p) => p.classList.remove("active"));
+
+          // Show the selected page
+          page.classList.add("active");
+        }
+
+        // Method Selection
+        const pdfMethod = document.getElementById("pdf-method");
+        const textMethod = document.getElementById("text-method");
+        const manualMethod = document.getElementById("manual-method");
+
+        console.log("Found PDF method element:", !!pdfMethod);
+        console.log("Found Text method element:", !!textMethod);
+        console.log("Found Manual method element:", !!manualMethod);
+
+        if (pdfMethod) {
+          pdfMethod.addEventListener("click", () => {
+            console.log("PDF method clicked");
+            showPage(pdfUpload);
+          });
+        }
+
+        if (textMethod) {
+          textMethod.addEventListener("click", () => {
+            console.log("Text method clicked");
+            showPage(textInput);
+          });
+        }
+
+        if (manualMethod) {
+          manualMethod.addEventListener("click", () => {
+            console.log("Manual method clicked");
+            showPage(manualEntry);
+          });
+        }
+
+        // Back buttons
+        const pdfBackBtn = document.getElementById("pdf-back-btn");
+        const textBackBtn = document.getElementById("text-back-btn");
+        const manualBackBtn = document.getElementById("manual-back-btn");
+        const reviewBackBtn = document.getElementById("review-back-btn");
+        const startOverBtn = document.getElementById("start-over-btn");
+
+        if (pdfBackBtn) {
+          pdfBackBtn.addEventListener("click", () => {
+            showPage(methodSelection);
+          });
+        }
+
+        if (textBackBtn) {
+          textBackBtn.addEventListener("click", () => {
+            showPage(methodSelection);
+          });
+        }
+
+        if (manualBackBtn) {
+          manualBackBtn.addEventListener("click", () => {
+            showPage(methodSelection);
+          });
+        }
+
+        if (reviewBackBtn) {
+          reviewBackBtn.addEventListener("click", () => {
+            // Check which method was last used and go back to that
+            const carouselTrack = document.getElementById("carousel-track");
+            if (carouselTrack) {
+              const lastMethod = carouselTrack.getAttribute("data-source");
+              if (lastMethod === "text") {
+                showPage(textInput);
+              } else if (lastMethod === "pdf") {
+                showPage(pdfUpload);
+              } else {
+                showPage(methodSelection);
               }
-            );
-          } else {
-            // If direct text is selected, use the text processing endpoint
-            pdfMessage.textContent = "Processing text...";
+            } else {
+              showPage(methodSelection);
+            }
+          });
+        }
 
-            // Use the text processing endpoint
-            response = await fetch(`${API_BASE_URL}/process/text`, {
+        if (startOverBtn) {
+          startOverBtn.addEventListener("click", () => {
+            showPage(methodSelection);
+          });
+        }
+
+        // Define the qaPairsContainer
+        const qaPairsContainer = document.getElementById("qa-pairs-container");
+        let pairCount = 1;
+
+        // Set up the carousel with the QA pairs
+        function setupCarousel(cards, source, taskId) {
+          // Update allCards global variable
+          allCards = cards;
+
+          // Reset carousel state
+          currentIndex = Math.min(currentIndex, cards.length - 1);
+          if (currentIndex < 0 && cards.length > 0) currentIndex = 0;
+
+          // Clear carousel track
+          carouselTrack.innerHTML = "";
+
+          // Store source and task ID
+          carouselTrack.setAttribute("data-source", source);
+          carouselTrack.setAttribute("data-task-id", taskId);
+          carouselTrack.setAttribute("data-cards", JSON.stringify(cards));
+
+          // Create cards for carousel
+          cards.forEach((card, index) => {
+            const cardElement = document.createElement("div");
+            cardElement.className = "qa-pair";
+            cardElement.dataset.index = index;
+
+            cardElement.innerHTML = `
+      <div class="qa-pair-header">
+        <div class="qa-pair-num">Card #${index + 1}</div>
+        <button type="button" class="remove-pair" title="Remove this card">✕</button>
+      </div>
+      <div class="form-group">
+        <label for="carousel-question-${index}">Question:</label>
+        <textarea id="carousel-question-${index}" class="edit-question" rows="3">${
+              card.question
+            }</textarea>
+      </div>
+      <div class="form-group">
+        <label for="carousel-answer-${index}">Answer:</label>
+        <textarea id="carousel-answer-${index}" class="edit-answer" rows="4">${
+              card.answer
+            }</textarea>
+      </div>
+    `;
+
+            carouselTrack.appendChild(cardElement);
+
+            // Add event listener for removing cards
+            cardElement
+              .querySelector(".remove-pair")
+              .addEventListener("click", function () {
+                if (cards.length > 1) {
+                  // Get current cards
+                  const currentCards = JSON.parse(
+                    carouselTrack.getAttribute("data-cards")
+                  );
+
+                  // Store the current index before removal
+                  const currentCardIndex = currentIndex;
+
+                  // Remove the current card
+                  currentCards.splice(index, 1);
+
+                  // Update the data attribute
+                  carouselTrack.setAttribute(
+                    "data-cards",
+                    JSON.stringify(currentCards)
+                  );
+
+                  // Determine which card to show after deletion
+                  let newIndex;
+                  if (index < currentCardIndex) {
+                    // If we deleted a card before the current one, stay at the same index
+                    // (which now points to the next card that was after the deleted one)
+                    newIndex = currentCardIndex - 1;
+                  } else if (index === currentCardIndex) {
+                    // If we deleted the current card, go to the previous card
+                    // unless we're at the first card, then stay at index 0
+                    newIndex = Math.max(0, currentCardIndex - 1);
+                  } else {
+                    // If we deleted a card after the current one, stay at the same index
+                    newIndex = currentCardIndex;
+                  }
+
+                  // Make sure the new index is valid
+                  newIndex = Math.min(newIndex, currentCards.length - 1);
+
+                  // Update allCards global variable
+                  allCards = currentCards;
+
+                  // Rebuild carousel
+                  setupCarousel(currentCards, source, taskId);
+
+                  // Go to the determined card
+                  goToCard(newIndex);
+                } else {
+                  alert("You need at least one flashcard");
+                }
+              });
+          });
+
+          // Update total cards display
+          totalCardsSpan.textContent = cards.length;
+          currentCardSpan.textContent = currentIndex + 1;
+
+          // Set up pagination dots
+          updateCarouselPagination(cards.length);
+
+          // Update carousel display
+          updateCarouselDisplay();
+
+          // Setup carousel controls
+          setupCarouselControls();
+
+          // If we're in grid view, also update the grid
+          if (gridContainer && !gridContainer.classList.contains("hidden")) {
+            populateGridView();
+          }
+        }
+
+        // Update the carousel pagination dots
+        function updateCarouselPagination(totalCards) {
+          // Clear existing pagination dots
+          carouselPagination.innerHTML = "";
+
+          // Create new pagination dots based on current number of cards
+          for (let i = 0; i < totalCards; i++) {
+            const dot = document.createElement("div");
+            dot.className = "pagination-dot";
+            if (i === currentIndex) {
+              dot.classList.add("active");
+            }
+
+            // Add click event to navigate to this card
+            dot.addEventListener("click", () => {
+              goToCard(i);
+            });
+
+            carouselPagination.appendChild(dot);
+          }
+        }
+
+        // Update carousel display based on current index
+        function updateCarouselDisplay() {
+          // Ensure currentIndex is valid
+          if (currentIndex >= allCards.length) {
+            currentIndex = allCards.length - 1;
+          }
+
+          // Update transform to show current card
+          carouselTrack.style.transform = `translateX(-${currentIndex * 100}%)`;
+
+          // Update current card number and total cards
+          currentCardSpan.textContent = currentIndex + 1;
+          totalCardsSpan.textContent = allCards.length;
+
+          // Update pagination dots - make sure active dot matches current index
+          const dots = carouselPagination.querySelectorAll(".pagination-dot");
+          dots.forEach((dot, index) => {
+            if (index === currentIndex) {
+              dot.classList.add("active");
+            } else {
+              dot.classList.remove("active");
+            }
+          });
+
+          // Update button states
+          prevBtn.disabled = currentIndex === 0;
+          nextBtn.disabled = currentIndex === allCards.length - 1;
+        }
+
+        // Setup carousel control buttons
+        function setupCarouselControls() {
+          // Previous button
+          prevBtn.onclick = () => {
+            if (currentIndex > 0) {
+              currentIndex--;
+              updateCarouselDisplay();
+            }
+          };
+
+          // Next button
+          nextBtn.onclick = () => {
+            if (currentIndex < allCards.length - 1) {
+              currentIndex++;
+              updateCarouselDisplay();
+            }
+          };
+
+          // Add new card button
+          if (addNewCardBtn) {
+            addNewCardBtn.onclick = () => {
+              // Get current cards
+              const currentCards = JSON.parse(
+                carouselTrack.getAttribute("data-cards")
+              );
+              const source = carouselTrack.getAttribute("data-source");
+              const taskId = carouselTrack.getAttribute("data-task-id");
+
+              // Add a new empty card
+              currentCards.push({
+                question: "",
+                answer: "",
+              });
+
+              // Update cards
+              allCards = currentCards;
+
+              // Update the data attribute
+              carouselTrack.setAttribute(
+                "data-cards",
+                JSON.stringify(currentCards)
+              );
+
+              // Rebuild carousel and go to the new card
+              setupCarousel(currentCards, source, taskId);
+              goToCard(currentCards.length - 1);
+            };
+          }
+        }
+
+        // Go to a specific card
+        function goToCard(index) {
+          if (index >= 0 && index < allCards.length) {
+            currentIndex = index;
+            updateCarouselDisplay();
+          }
+        }
+
+        // Function to populate the grid view with all cards
+        function populateGridView() {
+          // Get all cards from the carousel
+          const cards = JSON.parse(
+            carouselTrack.getAttribute("data-cards") || "[]"
+          );
+          const source = carouselTrack.getAttribute("data-source");
+          const taskId = carouselTrack.getAttribute("data-task-id");
+
+          // Clear grid container
+          gridContainer.innerHTML = "";
+
+          // Add each card to the grid
+          cards.forEach((card, index) => {
+            const gridItem = document.createElement("div");
+            gridItem.className = "grid-item";
+            gridItem.dataset.index = index;
+
+            gridItem.innerHTML = `
+      <div class="grid-item-header">
+        <div class="qa-pair-num">Card #${index + 1}</div>
+        <button type="button" class="remove-pair" title="Remove this card">✕</button>
+      </div>
+      <div class="form-group">
+        <label for="grid-question-${index}">Question:</label>
+        <textarea id="grid-question-${index}" class="edit-question" rows="2">${
+              card.question
+            }</textarea>
+      </div>
+      <div class="form-group">
+        <label for="grid-answer-${index}">Answer:</label>
+        <textarea id="grid-answer-${index}" class="edit-answer" rows="3">${
+              card.answer
+            }</textarea>
+      </div>
+    `;
+
+            gridContainer.appendChild(gridItem);
+
+            // Add event listener for textarea changes to sync with carousel
+            const questionTextarea = gridItem.querySelector(".edit-question");
+            const answerTextarea = gridItem.querySelector(".edit-answer");
+
+            questionTextarea.addEventListener("input", function () {
+              // Update the card data
+              cards[index].question = this.value;
+              carouselTrack.setAttribute("data-cards", JSON.stringify(cards));
+
+              // Also update the carousel view if it exists
+              const carouselQuestion = document.getElementById(
+                `carousel-question-${index}`
+              );
+              if (carouselQuestion) {
+                carouselQuestion.value = this.value;
+              }
+            });
+
+            answerTextarea.addEventListener("input", function () {
+              // Update the card data
+              cards[index].answer = this.value;
+              carouselTrack.setAttribute("data-cards", JSON.stringify(cards));
+
+              // Also update the carousel view if it exists
+              const carouselAnswer = document.getElementById(
+                `carousel-answer-${index}`
+              );
+              if (carouselAnswer) {
+                carouselAnswer.value = this.value;
+              }
+            });
+
+            // Add event listener for removing cards
+            gridItem
+              .querySelector(".remove-pair")
+              .addEventListener("click", function () {
+                if (cards.length > 1) {
+                  // Store the current index before removal
+                  const currentCardIndex = currentIndex;
+
+                  // Remove the card
+                  cards.splice(index, 1);
+
+                  // Update the data attribute
+                  carouselTrack.setAttribute(
+                    "data-cards",
+                    JSON.stringify(cards)
+                  );
+
+                  // Determine which card to show after deletion
+                  let newIndex;
+                  if (index < currentCardIndex) {
+                    // If we deleted a card before the current one
+                    newIndex = currentCardIndex - 1;
+                  } else if (index === currentCardIndex) {
+                    // If we deleted the current card
+                    newIndex = Math.max(0, currentCardIndex - 1);
+                  } else {
+                    // If we deleted a card after the current one
+                    newIndex = currentCardIndex;
+                  }
+
+                  // Make sure the new index is valid
+                  newIndex = Math.min(newIndex, cards.length - 1);
+
+                  // Update allCards
+                  allCards = cards;
+
+                  // Rebuild both views
+                  setupCarousel(cards, source, taskId);
+                  populateGridView();
+
+                  // Go to the determined card
+                  goToCard(newIndex);
+                } else {
+                  alert("You need at least one flashcard");
+                }
+              });
+          });
+        }
+
+        // Create deck from QA pairs
+        async function createDeckFromQAPairs(qaPairs, title) {
+          try {
+            // Show loading animation
+            loadingContainer.classList.add("show");
+            loadingText.textContent = "Creating your Anki deck...";
+
+            const response = await fetch(`${API_BASE_URL}/generate-deck`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                text: directText,
-                num_pairs: parseInt(numPairs),
+                title: title,
+                qa_pairs: qaPairs,
               }),
             });
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const deckTaskId = data.task_id;
+
+            // Poll for deck creation status
+            pollDeckStatus(deckTaskId);
+          } catch (error) {
+            console.error("Error creating deck:", error);
+            loadingContainer.classList.remove("show");
+            alert(`Error creating deck: ${error.message}`);
           }
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          const data = await response.json();
-          currentPdfTaskId = data.task_id;
-
-          // Start polling for status
-          pollPdfStatus(currentPdfTaskId);
-        } catch (error) {
-          console.error("Error:", error);
-          pdfStatusText.textContent = "Error";
-          pdfMessage.textContent = `Error: ${error.message}`;
-          pdfStatus.classList.add("error");
         }
-      });
 
-      // Poll for PDF processing status
-      async function pollPdfStatus(taskId) {
-        try {
-          const response = await fetch(`${API_BASE_URL}/status/${taskId}`);
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
+        // Add event listeners for grid view toggle
+        if (carouselViewBtn && gridViewBtn) {
+          carouselViewBtn.addEventListener("click", function () {
+            // Switch to carousel view
+            carouselViewBtn.classList.add("active");
+            gridViewBtn.classList.remove("active");
+            carouselContainer.classList.remove("hidden");
+            gridContainer.classList.add("hidden");
+            if (gridAddNewCardBtn) gridAddNewCardBtn.classList.add("hidden");
+            if (addNewCardBtn) addNewCardBtn.classList.remove("hidden");
+          });
 
-          const data = await response.json();
+          gridViewBtn.addEventListener("click", function () {
+            // Switch to grid view
+            gridViewBtn.classList.add("active");
+            carouselViewBtn.classList.remove("active");
+            gridContainer.classList.remove("hidden");
+            carouselContainer.classList.add("hidden");
+            if (addNewCardBtn) addNewCardBtn.classList.add("hidden");
+            if (gridAddNewCardBtn) gridAddNewCardBtn.classList.remove("hidden");
 
-          // Update status display
-          pdfStatusText.textContent = data.status;
-          pdfProgress.style.width = `${data.progress * 100}%`;
-          pdfMessage.textContent = data.message || "";
+            // Populate grid view if it hasn't been populated yet
+            populateGridView();
+          });
+        }
 
-          if (data.status === "completed") {
-            // Fetch QA pairs
-            fetchQAPairs(taskId);
-          } else if (data.status === "failed") {
-            pdfStatus.classList.add("error");
+        // Grid Add New Card button functionality
+        if (gridAddNewCardBtn) {
+          gridAddNewCardBtn.addEventListener("click", function () {
+            // Get current cards
+            const currentCards = JSON.parse(
+              carouselTrack.getAttribute("data-cards")
+            );
+            const source = carouselTrack.getAttribute("data-source");
+            const taskId = carouselTrack.getAttribute("data-task-id");
 
-            // Get current input method
-            const currentInputMethod = document
-              .getElementById("status-method")
-              .textContent.toLowerCase();
+            // Add a new empty card
+            currentCards.push({
+              question: "",
+              answer: "",
+            });
 
-            // Display more specific error messages based on the error content
-            if (data.message) {
-              if (data.message.includes("too large")) {
-                pdfMessage.innerHTML = `<strong>Error:</strong> ${data.message}<br>Try compressing your PDF or uploading a smaller document.`;
-              } else if (data.message.includes("too many pages")) {
-                pdfMessage.innerHTML = `<strong>Error:</strong> ${data.message}<br>Try splitting your PDF into smaller sections.`;
-              } else if (
-                data.message.includes("scanned images") ||
-                data.message.includes("text extraction")
-              ) {
-                pdfMessage.innerHTML = `<strong>Error:</strong> ${data.message}<br>Try using the direct text input option instead.`;
-              } else if (data.message.includes("API key")) {
-                pdfMessage.innerHTML = `<strong>Error:</strong> DeepSeek API key is missing or invalid. Please check your server configuration.`;
-              } else if (data.message.includes("too short")) {
-                pdfMessage.innerHTML = `<strong>Error:</strong> The provided text is too short. Please provide more content to generate meaningful questions.`;
+            // Update cards
+            allCards = currentCards;
+
+            // Update the data attribute
+            carouselTrack.setAttribute(
+              "data-cards",
+              JSON.stringify(currentCards)
+            );
+
+            // Rebuild grid view
+            populateGridView();
+
+            // Scroll to bottom to show the new card
+            gridContainer.scrollTop = gridContainer.scrollHeight;
+          });
+        }
+
+        // File input handling
+        const pdfFileInput = document.getElementById("pdf-file");
+        const pdfFileName = document.getElementById("pdf-file-name");
+
+        if (pdfFileInput && pdfFileName) {
+          pdfFileInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (file) {
+              const fileSizeMB = file.size / (1024 * 1024);
+
+              if (fileSizeMB > 20) {
+                pdfFileName.innerHTML = `<span style="color: #dc3545;">${
+                  file.name
+                } (${fileSizeMB.toFixed(1)} MB) - File is too large!</span>`;
+                alert(
+                  "This PDF file is too large (over 20MB). Please upload a smaller file or use the direct text input option."
+                );
+              } else if (fileSizeMB > 10) {
+                pdfFileName.innerHTML = `<span style="color: #ffc107;">${
+                  file.name
+                } (${fileSizeMB.toFixed(
+                  1
+                )} MB) - Large file, processing may take longer</span>`;
               } else {
-                // Generic error message with the actual error
-                pdfMessage.innerHTML = `<strong>Error processing ${currentInputMethod}:</strong> ${data.message}<br>Please try a different file or use the direct text input option.`;
-              }
-
-              // Add a suggestion to switch to text input
-              if (currentInputMethod === "pdf") {
-                setTimeout(() => {
-                  const switchToTextMsg = document.createElement("div");
-                  switchToTextMsg.className = "switch-to-text-msg";
-                  switchToTextMsg.innerHTML = `
-                    <p style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #ffc107;">
-                      <strong>Tip:</strong> If you're having trouble with PDF processing, you can:
-                      <ul style="margin-top: 5px; margin-bottom: 5px;">
-                        <li>Try a different PDF file</li>
-                        <li>Copy the text from your PDF and <a href="#" id="switch-to-text-link">switch to direct text input</a></li>
-                        <li>Make sure your PDF contains selectable text (not just images)</li>
-                      </ul>
-                    </p>
-                  `;
-                  pdfMessage.appendChild(switchToTextMsg);
-
-                  // Add event listener to switch to text input
-                  document
-                    .getElementById("switch-to-text-link")
-                    .addEventListener("click", (e) => {
-                      e.preventDefault();
-                      textToggle.click();
-                    });
-                }, 500);
+                pdfFileName.innerHTML = `${file.name} (${fileSizeMB.toFixed(
+                  1
+                )} MB)`;
               }
             } else {
-              pdfMessage.textContent =
-                "An unknown error occurred while processing. Please try again with a different file.";
+              pdfFileName.textContent = "";
             }
-          } else {
-            // Continue polling
-            setTimeout(() => pollPdfStatus(taskId), 1000);
-          }
-        } catch (error) {
-          console.error("Error polling status:", error);
-          pdfStatusText.textContent = "Error";
-          pdfMessage.textContent = `Error checking status: ${error.message}`;
-          pdfStatus.classList.add("error");
+          });
         }
-      }
 
-      // Fetch QA pairs
-      async function fetchQAPairs(taskId) {
-        try {
-          const response = await fetch(`${API_BASE_URL}/qa-pairs/${taskId}`);
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
+        // Word counter for text input
+        const directText = document.getElementById("direct-text");
+        const wordCount = document.querySelector(".word-count");
 
-          const data = await response.json();
+        if (directText && wordCount) {
+          directText.addEventListener("input", () => {
+            const count = directText.value.length;
+            wordCount.textContent = `${count} characters`;
 
-          // Display QA pairs
-          pdfQAPairs.innerHTML = "";
-
-          // Add edit instructions
-          const editInstructions = document.createElement("div");
-          editInstructions.className = "edit-instructions";
-          editInstructions.innerHTML = `
-            <p style="margin-bottom: 15px; font-style: italic; color: #666;">
-              You can edit any question or answer below before creating your Anki deck.
-            </p>
-          `;
-          pdfQAPairs.appendChild(editInstructions);
-
-          data.qa_pairs.forEach((pair, index) => {
-            const pairElement = document.createElement("div");
-            pairElement.className = "qa-pair";
-            pairElement.dataset.index = index;
-
-            pairElement.innerHTML = `
-              <div class="qa-pair-header">
-                <h4>Pair #${index + 1}</h4>
-                <div class="qa-pair-actions">
-                  <button type="button" class="icon-btn remove-pair" title="Remove this pair">
-                    ❌
-                  </button>
-                </div>
-              </div>
-              <div class="form-group">
-                <label for="edit-question-${index}">Question:</label>
-                <textarea id="edit-question-${index}" class="edit-question" rows="2">${
-              pair.question
-            }</textarea>
-              </div>
-              <div class="form-group">
-                <label for="edit-answer-${index}">Answer:</label>
-                <textarea id="edit-answer-${index}" class="edit-answer" rows="3">${
-              pair.answer
-            }</textarea>
-              </div>
-            `;
-
-            pdfQAPairs.appendChild(pairElement);
-
-            // Add event listener for removing pairs
-            pairElement
-              .querySelector(".remove-pair")
-              .addEventListener("click", function () {
-                if (document.querySelectorAll(".qa-pair").length > 1) {
-                  pairElement.remove();
-                  // Update the numbering
-                  updateQAPairNumbers();
-                } else {
-                  alert("You need at least one question-answer pair");
-                }
-              });
+            if (count < 100) {
+              wordCount.style.color = "#dc3545";
+            } else {
+              wordCount.style.color = "#666";
+            }
           });
+        }
 
-          // Add button to add new pairs
-          const addPairButton = document.createElement("button");
-          addPairButton.type = "button";
-          addPairButton.className = "secondary-btn";
-          addPairButton.style.marginTop = "15px";
-          addPairButton.textContent = "Add New Pair";
-          addPairButton.addEventListener("click", function () {
-            const newIndex = document.querySelectorAll(".qa-pair").length;
+        // PDF Form Submission
+        const pdfForm = document.getElementById("pdf-form");
+        let currentPdfTaskId = null;
 
-            const pairElement = document.createElement("div");
-            pairElement.className = "qa-pair";
-            pairElement.dataset.index = newIndex;
+        if (pdfForm) {
+          pdfForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
 
-            pairElement.innerHTML = `
-              <div class="qa-pair-header">
-                <h4>Pair #${newIndex + 1}</h4>
-                <div class="qa-pair-actions">
-                  <button type="button" class="icon-btn remove-pair" title="Remove this pair">
-                    ❌
-                  </button>
-                </div>
-              </div>
-              <div class="form-group">
-                <label for="edit-question-${newIndex}">Question:</label>
-                <textarea id="edit-question-${newIndex}" class="edit-question" rows="2"></textarea>
-              </div>
-              <div class="form-group">
-                <label for="edit-answer-${newIndex}">Answer:</label>
-                <textarea id="edit-answer-${newIndex}" class="edit-answer" rows="3"></textarea>
-              </div>
-            `;
+            const file = pdfFileInput.files[0];
+            const numPairs = document.getElementById("num-pairs").value;
 
-            pdfQAPairs.appendChild(pairElement);
+            if (!file) {
+              alert("Please select a PDF file");
+              return;
+            }
 
-            // Add event listener for removing pairs
-            pairElement
-              .querySelector(".remove-pair")
-              .addEventListener("click", function () {
-                if (document.querySelectorAll(".qa-pair").length > 1) {
-                  pairElement.remove();
-                  // Update the numbering
-                  updateQAPairNumbers();
-                } else {
-                  alert("You need at least one question-answer pair");
+            if (file.size / (1024 * 1024) > 20) {
+              alert(
+                "This PDF file is too large (over 20MB). Please upload a smaller file or use the direct text input option."
+              );
+              return;
+            }
+
+            try {
+              // Show loading animation
+              loadingContainer.classList.add("show");
+              loadingText.textContent = "Analyzing your PDF content...";
+
+              // Create FormData
+              const formData = new FormData();
+              formData.append("file", file);
+              formData.append("num_pairs", numPairs);
+
+              // Upload PDF
+              const response = await fetch(
+                `${API_BASE_URL}/upload/pdf?num_pairs=${numPairs}`,
+                {
+                  method: "POST",
+                  body: formData,
                 }
+              );
+
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+
+              const data = await response.json();
+              currentPdfTaskId = data.task_id;
+
+              // Start polling for status
+              pollPdfStatus(currentPdfTaskId);
+            } catch (error) {
+              console.error("Error:", error);
+              loadingContainer.classList.remove("show");
+              alert(`Error: ${error.message}`);
+            }
+          });
+        }
+
+        // Text Form Submission
+        const textForm = document.getElementById("text-form");
+
+        if (textForm) {
+          textForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const text = directText.value.trim();
+            const numPairs = document.getElementById("text-num-pairs").value;
+
+            if (!text) {
+              alert("Please enter some text");
+              return;
+            }
+
+            if (text.length < 100) {
+              alert(
+                "The text is too short. Please provide more content to generate meaningful questions (at least 100 characters)."
+              );
+              return;
+            }
+
+            try {
+              // Show loading animation
+              loadingContainer.classList.add("show");
+              loadingText.textContent = "Analyzing your text content...";
+
+              // Process text
+              const response = await fetch(`${API_BASE_URL}/process/text`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  text: text,
+                  num_pairs: parseInt(numPairs),
+                }),
               });
 
-            // Focus on the new question field
-            pairElement.querySelector(".edit-question").focus();
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+
+              const data = await response.json();
+              currentPdfTaskId = data.task_id;
+
+              // Start polling for status (reusing the same function)
+              pollPdfStatus(currentPdfTaskId, "text");
+            } catch (error) {
+              console.error("Error:", error);
+              loadingContainer.classList.remove("show");
+              alert(`Error: ${error.message}`);
+            }
           });
+        }
 
-          pdfQAPairs.appendChild(addPairButton);
+        // Update manual pair numbers
+        function updateManualPairNumbers() {
+          const pairs = qaPairsContainer.querySelectorAll(".qa-pair");
+          pairs.forEach((pair, index) => {
+            pair.querySelector(".qa-pair-num").textContent = `Card #${
+              index + 1
+            }`;
+          });
+        }
 
-          // Show QA list
-          pdfQAList.classList.remove("hidden");
+        // Manual Form Submission
+        if (manualForm) {
+          manualForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
 
-          // Store QA pairs for deck creation
-          pdfCreateDeck.addEventListener("click", () => {
-            // Collect edited QA pairs
-            const editedQAPairs = [];
-            const questionElements =
-              document.querySelectorAll(".edit-question");
-            const answerElements = document.querySelectorAll(".edit-answer");
+            const title = document.getElementById("deck-title").value;
+            const qaPairs = [];
 
-            for (let i = 0; i < questionElements.length; i++) {
-              const question = questionElements[i].value.trim();
-              const answer = answerElements[i].value.trim();
+            // Collect all QA pairs
+            const questionInputs = document.querySelectorAll(".question-input");
+            const answerInputs = document.querySelectorAll(".answer-input");
 
-              // Only include pairs where both question and answer have content
+            for (let i = 0; i < questionInputs.length; i++) {
+              const question = questionInputs[i].value.trim();
+              const answer = answerInputs[i].value.trim();
+
               if (question && answer) {
-                editedQAPairs.push({
+                qaPairs.push({
                   question: question,
                   answer: answer,
                 });
               }
             }
 
-            if (editedQAPairs.length === 0) {
-              alert("Please provide at least one question-answer pair");
+            if (qaPairs.length === 0) {
+              alert("Please add at least one question-answer pair");
               return;
             }
 
-            createDeckFromQAPairs(editedQAPairs);
+            createDeckFromQAPairs(qaPairs, title);
           });
-        } catch (error) {
-          console.error("Error fetching QA pairs:", error);
-          pdfStatusText.textContent = "Error";
-          pdfMessage.textContent = `Error fetching QA pairs: ${error.message}`;
-          pdfStatus.classList.add("error");
-        }
-      }
-
-      // Function to update the numbering of QA pairs
-      function updateQAPairNumbers() {
-        const pairs = document.querySelectorAll(".qa-pair");
-        pairs.forEach((pair, index) => {
-          pair.dataset.index = index;
-          pair.querySelector("h4").textContent = `Pair #${index + 1}`;
-
-          // Update IDs to maintain uniqueness
-          const questionTextarea = pair.querySelector(".edit-question");
-          const answerTextarea = pair.querySelector(".edit-answer");
-
-          questionTextarea.id = `edit-question-${index}`;
-          answerTextarea.id = `edit-answer-${index}`;
-        });
-      }
-
-      // Create deck from QA pairs
-      async function createDeckFromQAPairs(qaPairs) {
-        try {
-          // Show status
-          manualStatus.classList.remove("hidden");
-          manualStatusText.textContent = "Creating...";
-          manualProgress.style.width = "0%";
-          manualMessage.textContent = "Creating Anki deck...";
-
-          const title = prompt(
-            "Enter a title for your deck:",
-            "Generated Deck"
-          );
-          if (!title) return;
-
-          const response = await fetch(`${API_BASE_URL}/generate-deck`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              title: title,
-              qa_pairs: qaPairs,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          const data = await response.json();
-          currentDeckTaskId = data.task_id;
-
-          // Poll for deck creation status
-          pollDeckStatus(currentDeckTaskId);
-        } catch (error) {
-          console.error("Error creating deck:", error);
-          manualStatusText.textContent = "Error";
-          manualMessage.textContent = `Error creating deck: ${error.message}`;
-          manualStatus.classList.add("error");
-        }
-      }
-
-      // Add QA pair
-      let pairCount = 1;
-      addPairBtn.addEventListener("click", () => {
-        pairCount++;
-        const newPair = document.createElement("div");
-        newPair.className = "qa-pair";
-        newPair.dataset.index = pairCount - 1;
-        newPair.innerHTML = `
-                <h4>Pair #${pairCount}</h4>
-                <div class="form-group">
-                    <label for="question-${pairCount - 1}">Question</label>
-                    <input type="text" id="question-${
-                      pairCount - 1
-                    }" class="question-input" required placeholder="Enter your question">
-                </div>
-                <div class="form-group">
-                    <label for="answer-${pairCount - 1}">Answer</label>
-                    <textarea id="answer-${
-                      pairCount - 1
-                    }" class="answer-input" required placeholder="Enter your answer" rows="3"></textarea>
-                </div>
-            `;
-        qaPairsContainer.appendChild(newPair);
-      });
-
-      // Manual Form Submission
-      manualForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const title = document.getElementById("deck-title").value;
-        const qaPairs = [];
-
-        // Collect all QA pairs
-        const questionInputs = document.querySelectorAll(".question-input");
-        const answerInputs = document.querySelectorAll(".answer-input");
-
-        for (let i = 0; i < questionInputs.length; i++) {
-          const question = questionInputs[i].value.trim();
-          const answer = answerInputs[i].value.trim();
-
-          if (question && answer) {
-            qaPairs.push({
-              question: question,
-              answer: answer,
-            });
-          }
         }
 
-        if (qaPairs.length === 0) {
-          alert("Please add at least one question-answer pair");
-          return;
-        }
-
-        try {
-          // Show status
-          manualStatus.classList.remove("hidden");
-          manualStatusText.textContent = "Creating...";
-          manualProgress.style.width = "0%";
-          manualMessage.textContent = "Creating Anki deck...";
-
-          const response = await fetch(`${API_BASE_URL}/generate-deck`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              title: title,
-              qa_pairs: qaPairs,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          const data = await response.json();
-          currentDeckTaskId = data.task_id;
-
-          // Poll for deck creation status
-          pollDeckStatus(currentDeckTaskId);
-        } catch (error) {
-          console.error("Error creating deck:", error);
-          manualStatusText.textContent = "Error";
-          manualMessage.textContent = `Error creating deck: ${error.message}`;
-          manualStatus.classList.add("error");
-        }
-      });
-
-      // Poll for deck creation status
-      async function pollDeckStatus(taskId) {
-        try {
-          const response = await fetch(`${API_BASE_URL}/status/${taskId}`);
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          const data = await response.json();
-
-          // Update status display
-          manualStatusText.textContent = data.status;
-          manualProgress.style.width = `${data.progress * 100}%`;
-          manualMessage.textContent = data.message || "";
-
-          if (data.status === "completed") {
-            // Show download button
-            downloadContainer.classList.remove("hidden");
-            downloadContainer.classList.add("success");
-            manualMessage.textContent =
-              "Deck created successfully! Please click the 'Download Anki Deck' button below to save your deck.";
-            manualStatus.classList.add("success");
-
-            // Scroll to the download button to make it obvious
-            downloadContainer.scrollIntoView({ behavior: "smooth" });
-
-            // Add a visual indicator (pulsing effect) to the download button
-            downloadDeckBtn.classList.add("pulse-animation");
-
-            downloadDeckBtn.onclick = () => {
-              window.location.href = `${API_BASE_URL}/download/${taskId}`;
-            };
-          } else if (data.status === "failed") {
-            manualStatus.classList.add("error");
-          } else {
-            // Continue polling
-            setTimeout(() => pollDeckStatus(taskId), 1000);
-          }
-        } catch (error) {
-          console.error("Error polling status:", error);
-          manualStatusText.textContent = "Error";
-          manualMessage.textContent = `Error checking status: ${error.message}`;
-          manualStatus.classList.add("error");
-        }
-      }
-
-      // Test OpenAI Connection
-      document
-        .getElementById("test-api-btn")
-        .addEventListener("click", async () => {
-          const apiTestStatus = document.getElementById("api-test-status");
-          apiTestStatus.classList.remove("hidden");
-          const apiTestResult = document.getElementById("api-test-result");
-          const apiTestMessage = document.getElementById("api-test-message");
-
-          apiTestResult.textContent = "Testing...";
-          apiTestMessage.textContent = "Checking DeepSeek API connection...";
-
+        // Poll for deck creation status
+        async function pollDeckStatus(taskId) {
           try {
-            const response = await fetch(`${API_BASE_URL}/test-deepseek`);
+            const response = await fetch(`${API_BASE_URL}/status/${taskId}`);
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
-            apiTestResult.textContent = data.status;
-            apiTestMessage.textContent = data.message || "";
 
-            if (data.status === "success") {
-              apiTestStatus.classList.remove("error");
-              apiTestStatus.classList.add("success");
+            // Update loading text
+            if (data.message) {
+              loadingText.textContent = data.message;
+            }
+
+            if (data.status === "completed") {
+              // Store deck task ID for download
+              document
+                .getElementById("download-deck")
+                .setAttribute("data-task-id", taskId);
+
+              // Hide loading and show download page
+              loadingContainer.classList.remove("show");
+              showPage(downloadPage);
+
+              // Show notification
+              showNotification("Deck created successfully!");
+            } else if (data.status === "failed") {
+              loadingContainer.classList.remove("show");
+              alert(
+                `Error: ${
+                  data.message || "An error occurred while creating the deck."
+                }`
+              );
             } else {
-              apiTestStatus.classList.remove("success");
-              apiTestStatus.classList.add("error");
+              // Continue polling
+              setTimeout(() => pollDeckStatus(taskId), 1000);
             }
           } catch (error) {
-            console.error("Error testing API:", error);
-            apiTestResult.textContent = "Error";
-            apiTestMessage.textContent = `Error: ${error.message}`;
-            apiTestStatus.classList.remove("success");
-            apiTestStatus.classList.add("error");
+            console.error("Error polling status:", error);
+            loadingContainer.classList.remove("show");
+            alert(`Error checking status: ${error.message}`);
+          }
+        }
+
+        // Download deck
+        const downloadDeckBtn = document.getElementById("download-deck");
+        if (downloadDeckBtn) {
+          downloadDeckBtn.addEventListener("click", function () {
+            const taskId = this.getAttribute("data-task-id");
+            if (taskId) {
+              window.location.href = `${API_BASE_URL}/download/${taskId}`;
+            } else {
+              alert("Error: Task ID not found.");
+            }
+          });
+        }
+
+        // Show notification
+        function showNotification(message) {
+          const notification = document.getElementById("notification");
+          notification.textContent = message;
+          notification.classList.add("show");
+
+          // Hide after 3 seconds
+          setTimeout(() => {
+            notification.classList.remove("show");
+          }, 3000);
+        }
+
+        // Add remove button to first QA pair in manual entry
+        const firstPair = qaPairsContainer
+          ? qaPairsContainer.querySelector(".qa-pair")
+          : null;
+        if (firstPair) {
+          // Add remove button if not already present
+          if (!firstPair.querySelector(".remove-pair")) {
+            const header = firstPair.querySelector(".qa-pair-header");
+            if (header) {
+              const removeBtn = document.createElement("button");
+              removeBtn.type = "button";
+              removeBtn.className = "remove-pair";
+              removeBtn.title = "Remove this pair";
+              removeBtn.textContent = "✕";
+
+              header.appendChild(removeBtn);
+
+              // Add event listener
+              removeBtn.addEventListener("click", function () {
+                if (document.querySelectorAll(".qa-pair").length > 1) {
+                  firstPair.remove();
+                  pairCount--;
+                  updateManualPairNumbers();
+                } else {
+                  alert("You need at least one question-answer pair");
+                }
+              });
+            }
+          }
+        }
+
+        // Add keyboard navigation for carousel and grid views
+        document.addEventListener("keydown", function (e) {
+          if (qaReview.classList.contains("active")) {
+            if (!gridContainer.classList.contains("hidden")) {
+              // Grid view active - no special keyboard handling needed
+              return;
+            }
+
+            if (e.key === "ArrowLeft") {
+              // Left arrow - previous card
+              if (currentIndex > 0) {
+                currentIndex--;
+                updateCarouselDisplay();
+              }
+            } else if (e.key === "ArrowRight") {
+              // Right arrow - next card
+              if (currentIndex < allCards.length - 1) {
+                currentIndex++;
+                updateCarouselDisplay();
+              }
+            }
           }
         });
 
-      // Initialize the page
-      document.addEventListener("DOMContentLoaded", () => {
-        // Set initial button text based on default input method
-        uploadBtn.textContent = "Generate Flashcards from PDF";
-      });
+        // Add QA pair in manual entry
+        const addPairBtn = document.getElementById("add-pair");
+        if (addPairBtn) {
+          addPairBtn.addEventListener("click", () => {
+            pairCount++;
+            const newPair = document.createElement("div");
+            newPair.className = "qa-pair";
 
-      // Clear text button
-      document
-        .getElementById("clear-text-btn")
-        .addEventListener("click", () => {
-          document.getElementById("direct-text").value = "";
-        });
+            newPair.innerHTML = `
+              <div class="qa-pair-header">
+                <div class="qa-pair-num">Card #${pairCount}</div>
+                <button type="button" class="remove-pair" title="Remove this card">✕</button>
+              </div>
+              <div class="form-group">
+                <label for="question-${pairCount - 1}">Question</label>
+                <input type="text" id="question-${
+                  pairCount - 1
+                }" class="question-input" required placeholder="Enter your question">
+              </div>
+              <div class="form-group">
+                <label for="answer-${pairCount - 1}">Answer</label>
+                <textarea id="answer-${
+                  pairCount - 1
+                }" class="answer-input" required placeholder="Enter your answer" rows="3"></textarea>
+              </div>
+            `;
+
+            qaPairsContainer.appendChild(newPair);
+
+            // Add event listener for remove button
+            newPair
+              .querySelector(".remove-pair")
+              .addEventListener("click", function () {
+                if (document.querySelectorAll(".qa-pair").length > 1) {
+                  newPair.remove();
+                  pairCount--;
+                  updateManualPairNumbers();
+                } else {
+                  alert("You need at least one question-answer pair");
+                }
+              });
+          });
+        }
+
+        // Create deck from QA review page
+        const createDeckFromQABtn = document.getElementById(
+          "create-deck-from-qa"
+        );
+        if (createDeckFromQABtn) {
+          createDeckFromQABtn.addEventListener("click", function () {
+            // Get current cards from carousel data attribute
+            const cards = JSON.parse(
+              carouselTrack.getAttribute("data-cards") || "[]"
+            );
+
+            // Validate cards
+            const validCards = cards.filter(
+              (card) => card.question.trim() && card.answer.trim()
+            );
+
+            if (validCards.length === 0) {
+              alert("Please provide at least one valid question-answer pair");
+              return;
+            }
+
+            // Prompt for deck title
+            const title = prompt(
+              "Enter a title for your deck:",
+              "Generated Deck"
+            );
+            if (!title) return;
+
+            // Create deck
+            createDeckFromQAPairs(validCards, title);
+          });
+        }
+
+        console.log("All event listeners attached successfully");
+      });
     </script>
   </body>
 </html>
