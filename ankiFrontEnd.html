@@ -85,8 +85,8 @@
         align-items: center;
         justify-content: center;
         border: 2px solid transparent;
-        position: relative; /* Add this for z-index to work */
-        z-index: 1; /* Ensure clickable */
+        position: relative;
+        z-index: 1;
       }
 
       .method-card:hover {
@@ -154,7 +154,7 @@
         margin-top: 2rem;
         position: relative;
         overflow: hidden;
-        padding-bottom: 2rem; /* Space for pagination */
+        padding-bottom: 2rem;
       }
 
       .carousel-track {
@@ -598,7 +598,6 @@
         border: none;
         color: #dc3545;
         cursor: pointer;
-        width: auto;
         padding: 0.3rem;
         margin: 0;
         font-size: 1.1rem;
@@ -610,7 +609,7 @@
         opacity: 1;
       }
 
-      /* For direct text input page */
+      /* Direct text input page */
       .direct-text-wrap {
         position: relative;
       }
@@ -623,7 +622,7 @@
         color: #666;
       }
 
-      /* Notification for deck creation */
+      /* Notification */
       .notification {
         position: fixed;
         bottom: 2rem;
@@ -660,8 +659,6 @@
         font-size: 0.9rem;
         font-weight: 500;
         transition: var(--transition);
-        width: auto;
-        margin-top: 0;
       }
 
       .view-btn.active {
@@ -724,7 +721,6 @@
         min-height: 60px;
       }
 
-      /* Mobile responsiveness */
       @media (max-width: 768px) {
         .container {
           padding: 1rem;
@@ -808,7 +804,6 @@
             Upload a PDF document to automatically generate question-answer
             pairs.
           </p>
-
           <form id="pdf-form">
             <div class="form-group">
               <div class="file-input">
@@ -862,7 +857,6 @@
         <div class="card">
           <h2>Direct Text Input</h2>
           <p>Enter or paste your text to generate question-answer pairs.</p>
-
           <form id="text-form">
             <div class="form-group">
               <label for="direct-text">Paste Your Text</label>
@@ -906,7 +900,6 @@
         <div class="card">
           <h2>Manual Q&A Entry</h2>
           <p>Create your own question-answer pairs for your Anki deck.</p>
-
           <form id="manual-form">
             <div class="form-group">
               <label for="deck-title">Deck Title</label>
@@ -968,7 +961,6 @@
           <h2>Review Generated Flashcards</h2>
           <p>Review and edit your flashcards before creating your Anki deck.</p>
 
-          <!-- View toggle buttons -->
           <div class="view-toggle">
             <button id="carousel-view-btn" class="view-btn active">
               Carousel View
@@ -976,11 +968,8 @@
             <button id="grid-view-btn" class="view-btn">Grid View</button>
           </div>
 
-          <!-- Carousel Container -->
           <div class="carousel-container" id="flashcard-carousel">
-            <div class="carousel-track" id="carousel-track">
-              <!-- Cards will be inserted here by JavaScript -->
-            </div>
+            <div class="carousel-track" id="carousel-track"></div>
 
             <div class="carousel-controls">
               <button class="carousel-btn" id="prev-btn" disabled>&lt;</button>
@@ -991,19 +980,14 @@
               <button class="carousel-btn" id="next-btn">&gt;</button>
             </div>
 
-            <div class="carousel-pagination" id="carousel-pagination">
-              <!-- Pagination dots will be added here -->
-            </div>
+            <div class="carousel-pagination" id="carousel-pagination"></div>
 
             <button type="button" id="add-new-card" class="add-card-btn">
               + Add New Flashcard
             </button>
           </div>
 
-          <!-- Grid Container (initially hidden) -->
-          <div class="grid-container hidden" id="flashcard-grid">
-            <!-- Cards will be inserted here by JavaScript -->
-          </div>
+          <div class="grid-container hidden" id="flashcard-grid"></div>
 
           <button
             type="button"
@@ -1061,14 +1045,10 @@
     <div class="notification" id="notification">Deck created successfully!</div>
 
     <script>
-      // API endpoint base URL
       const API_BASE_URL = "http://localhost:8000";
 
-      // Wait for DOM to be fully loaded before attaching event listeners
       document.addEventListener("DOMContentLoaded", function () {
-        console.log("DOM fully loaded");
-
-        // DOM Elements
+        // Get DOM elements
         const methodSelection = document.getElementById("method-selection");
         const pdfUpload = document.getElementById("pdf-upload");
         const textInput = document.getElementById("text-input");
@@ -1078,7 +1058,7 @@
         const loadingContainer = document.getElementById("loading-container");
         const loadingText = document.getElementById("loading-text");
 
-        // Carousel Elements
+        // Carousel elements
         const carouselTrack = document.getElementById("carousel-track");
         const prevBtn = document.getElementById("prev-btn");
         const nextBtn = document.getElementById("next-btn");
@@ -1089,43 +1069,32 @@
         );
         const addNewCardBtn = document.getElementById("add-new-card");
 
-        // Grid Elements
+        // Grid elements
         const carouselViewBtn = document.getElementById("carousel-view-btn");
         const gridViewBtn = document.getElementById("grid-view-btn");
         const carouselContainer = document.getElementById("flashcard-carousel");
         const gridContainer = document.getElementById("flashcard-grid");
         const gridAddNewCardBtn = document.getElementById("grid-add-new-card");
 
-        // Carousel state
+        const manualForm = document.getElementById("manual-form");
+
         let currentIndex = 0;
         let allCards = [];
 
+        // Poll for PDF/text processing status
         async function pollPdfStatus(taskId, source = "pdf") {
           try {
             const response = await fetch(`${API_BASE_URL}/status/${taskId}`);
-            if (!response.ok) {
+            if (!response.ok)
               throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
             const data = await response.json();
-
-            // Update loading text
-            if (data.message) {
-              loadingText.textContent = data.message;
-            }
-
+            if (data.message) loadingText.textContent = data.message;
             if (data.status === "completed") {
-              // Fetch QA pairs
               fetchQAPairs(taskId, source);
             } else if (data.status === "failed") {
               loadingContainer.classList.remove("show");
-              alert(
-                `Error: ${
-                  data.message || "An error occurred during processing."
-                }`
-              );
+              alert(data.message || "An error occurred during processing.");
             } else {
-              // Continue polling
               setTimeout(() => pollPdfStatus(taskId, source), 1000);
             }
           } catch (error) {
@@ -1135,23 +1104,14 @@
           }
         }
 
-        // Also add fetchQAPairs function
         async function fetchQAPairs(taskId, source) {
           try {
             const response = await fetch(`${API_BASE_URL}/qa-pairs/${taskId}`);
-            if (!response.ok) {
+            if (!response.ok)
               throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
             const data = await response.json();
-
-            // Store all QA pairs
             allCards = data.qa_pairs;
-
-            // Set up carousel
             setupCarousel(allCards, source, taskId);
-
-            // Hide loading and show QA review page
             loadingContainer.classList.remove("show");
             showPage(qaReview);
           } catch (error) {
@@ -1161,46 +1121,24 @@
           }
         }
 
-        // Helper function to switch pages
         function showPage(page) {
-          console.log("Showing page:", page.id);
-          // Hide all pages
-          const pages = document.querySelectorAll(".page");
-          pages.forEach((p) => p.classList.remove("active"));
-
-          // Show the selected page
+          document
+            .querySelectorAll(".page")
+            .forEach((p) => p.classList.remove("active"));
           page.classList.add("active");
         }
 
-        // Method Selection
+        // Method selection events
         const pdfMethod = document.getElementById("pdf-method");
         const textMethod = document.getElementById("text-method");
         const manualMethod = document.getElementById("manual-method");
 
-        console.log("Found PDF method element:", !!pdfMethod);
-        console.log("Found Text method element:", !!textMethod);
-        console.log("Found Manual method element:", !!manualMethod);
-
-        if (pdfMethod) {
-          pdfMethod.addEventListener("click", () => {
-            console.log("PDF method clicked");
-            showPage(pdfUpload);
-          });
-        }
-
-        if (textMethod) {
-          textMethod.addEventListener("click", () => {
-            console.log("Text method clicked");
-            showPage(textInput);
-          });
-        }
-
-        if (manualMethod) {
-          manualMethod.addEventListener("click", () => {
-            console.log("Manual method clicked");
-            showPage(manualEntry);
-          });
-        }
+        if (pdfMethod)
+          pdfMethod.addEventListener("click", () => showPage(pdfUpload));
+        if (textMethod)
+          textMethod.addEventListener("click", () => showPage(textInput));
+        if (manualMethod)
+          manualMethod.addEventListener("click", () => showPage(manualEntry));
 
         // Back buttons
         const pdfBackBtn = document.getElementById("pdf-back-btn");
@@ -1209,144 +1147,88 @@
         const reviewBackBtn = document.getElementById("review-back-btn");
         const startOverBtn = document.getElementById("start-over-btn");
 
-        if (pdfBackBtn) {
-          pdfBackBtn.addEventListener("click", () => {
-            showPage(methodSelection);
-          });
-        }
-
-        if (textBackBtn) {
-          textBackBtn.addEventListener("click", () => {
-            showPage(methodSelection);
-          });
-        }
-
-        if (manualBackBtn) {
-          manualBackBtn.addEventListener("click", () => {
-            showPage(methodSelection);
-          });
-        }
-
+        if (pdfBackBtn)
+          pdfBackBtn.addEventListener("click", () => showPage(methodSelection));
+        if (textBackBtn)
+          textBackBtn.addEventListener("click", () =>
+            showPage(methodSelection)
+          );
+        if (manualBackBtn)
+          manualBackBtn.addEventListener("click", () =>
+            showPage(methodSelection)
+          );
         if (reviewBackBtn) {
           reviewBackBtn.addEventListener("click", () => {
-            // Check which method was last used and go back to that
-            const carouselTrack = document.getElementById("carousel-track");
-            if (carouselTrack) {
-              const lastMethod = carouselTrack.getAttribute("data-source");
-              if (lastMethod === "text") {
-                showPage(textInput);
-              } else if (lastMethod === "pdf") {
-                showPage(pdfUpload);
-              } else {
-                showPage(methodSelection);
-              }
-            } else {
-              showPage(methodSelection);
-            }
+            const lastMethod = carouselTrack.getAttribute("data-source");
+            if (lastMethod === "text") showPage(textInput);
+            else if (lastMethod === "pdf") showPage(pdfUpload);
+            else showPage(methodSelection);
           });
         }
+        if (startOverBtn)
+          startOverBtn.addEventListener("click", () =>
+            showPage(methodSelection)
+          );
 
-        if (startOverBtn) {
-          startOverBtn.addEventListener("click", () => {
-            showPage(methodSelection);
-          });
-        }
-
-        // Define the qaPairsContainer
+        // Manual entry QA pairs container and count
         const qaPairsContainer = document.getElementById("qa-pairs-container");
         let pairCount = 1;
 
-        // Set up the carousel with the QA pairs
+        // Set up the flashcard carousel
         function setupCarousel(cards, source, taskId) {
-          // Update allCards global variable
           allCards = cards;
-
-          // Reset carousel state
           currentIndex = Math.min(currentIndex, cards.length - 1);
           if (currentIndex < 0 && cards.length > 0) currentIndex = 0;
-
-          // Clear carousel track
           carouselTrack.innerHTML = "";
-
-          // Store source and task ID
           carouselTrack.setAttribute("data-source", source);
           carouselTrack.setAttribute("data-task-id", taskId);
           carouselTrack.setAttribute("data-cards", JSON.stringify(cards));
 
-          // Create cards for carousel
           cards.forEach((card, index) => {
             const cardElement = document.createElement("div");
             cardElement.className = "qa-pair";
             cardElement.dataset.index = index;
-
             cardElement.innerHTML = `
-      <div class="qa-pair-header">
-        <div class="qa-pair-num">Card #${index + 1}</div>
-        <button type="button" class="remove-pair" title="Remove this card">✕</button>
-      </div>
-      <div class="form-group">
-        <label for="carousel-question-${index}">Question:</label>
-        <textarea id="carousel-question-${index}" class="edit-question" rows="3">${
+              <div class="qa-pair-header">
+                <div class="qa-pair-num">Card #${index + 1}</div>
+                <button type="button" class="remove-pair" title="Remove this card">✕</button>
+              </div>
+              <div class="form-group">
+                <label for="carousel-question-${index}">Question:</label>
+                <textarea id="carousel-question-${index}" class="edit-question" rows="3">${
               card.question
             }</textarea>
-      </div>
-      <div class="form-group">
-        <label for="carousel-answer-${index}">Answer:</label>
-        <textarea id="carousel-answer-${index}" class="edit-answer" rows="4">${
+              </div>
+              <div class="form-group">
+                <label for="carousel-answer-${index}">Answer:</label>
+                <textarea id="carousel-answer-${index}" class="edit-answer" rows="4">${
               card.answer
             }</textarea>
-      </div>
-    `;
-
+              </div>
+            `;
             carouselTrack.appendChild(cardElement);
-
-            // Add event listener for removing cards
             cardElement
               .querySelector(".remove-pair")
               .addEventListener("click", function () {
                 if (cards.length > 1) {
-                  // Get current cards
                   const currentCards = JSON.parse(
                     carouselTrack.getAttribute("data-cards")
                   );
-
-                  // Store the current index before removal
                   const currentCardIndex = currentIndex;
-
-                  // Remove the current card
                   currentCards.splice(index, 1);
-
-                  // Update the data attribute
                   carouselTrack.setAttribute(
                     "data-cards",
                     JSON.stringify(currentCards)
                   );
-
-                  // Determine which card to show after deletion
-                  let newIndex;
-                  if (index < currentCardIndex) {
-                    // If we deleted a card before the current one, stay at the same index
-                    // (which now points to the next card that was after the deleted one)
-                    newIndex = currentCardIndex - 1;
-                  } else if (index === currentCardIndex) {
-                    // If we deleted the current card, go to the previous card
-                    // unless we're at the first card, then stay at index 0
-                    newIndex = Math.max(0, currentCardIndex - 1);
-                  } else {
-                    // If we deleted a card after the current one, stay at the same index
-                    newIndex = currentCardIndex;
-                  }
-
-                  // Make sure the new index is valid
+                  let newIndex =
+                    index < currentCardIndex
+                      ? currentCardIndex - 1
+                      : index === currentCardIndex
+                      ? Math.max(0, currentCardIndex - 1)
+                      : currentCardIndex;
                   newIndex = Math.min(newIndex, currentCards.length - 1);
-
-                  // Update allCards global variable
                   allCards = currentCards;
-
-                  // Rebuild carousel
                   setupCarousel(currentCards, source, taskId);
-
-                  // Go to the determined card
                   goToCard(newIndex);
                 } else {
                   alert("You need at least one flashcard");
@@ -1354,127 +1236,74 @@
               });
           });
 
-          // Update total cards display
           totalCardsSpan.textContent = cards.length;
           currentCardSpan.textContent = currentIndex + 1;
-
-          // Set up pagination dots
           updateCarouselPagination(cards.length);
-
-          // Update carousel display
           updateCarouselDisplay();
-
-          // Setup carousel controls
           setupCarouselControls();
-
-          // If we're in grid view, also update the grid
           if (gridContainer && !gridContainer.classList.contains("hidden")) {
             populateGridView();
           }
         }
 
-        // Update the carousel pagination dots
         function updateCarouselPagination(totalCards) {
-          // Clear existing pagination dots
           carouselPagination.innerHTML = "";
-
-          // Create new pagination dots based on current number of cards
           for (let i = 0; i < totalCards; i++) {
             const dot = document.createElement("div");
             dot.className = "pagination-dot";
-            if (i === currentIndex) {
-              dot.classList.add("active");
-            }
-
-            // Add click event to navigate to this card
-            dot.addEventListener("click", () => {
-              goToCard(i);
-            });
-
+            if (i === currentIndex) dot.classList.add("active");
+            dot.addEventListener("click", () => goToCard(i));
             carouselPagination.appendChild(dot);
           }
         }
 
-        // Update carousel display based on current index
         function updateCarouselDisplay() {
-          // Ensure currentIndex is valid
-          if (currentIndex >= allCards.length) {
+          if (currentIndex >= allCards.length)
             currentIndex = allCards.length - 1;
-          }
-
-          // Update transform to show current card
           carouselTrack.style.transform = `translateX(-${currentIndex * 100}%)`;
-
-          // Update current card number and total cards
           currentCardSpan.textContent = currentIndex + 1;
           totalCardsSpan.textContent = allCards.length;
-
-          // Update pagination dots - make sure active dot matches current index
-          const dots = carouselPagination.querySelectorAll(".pagination-dot");
-          dots.forEach((dot, index) => {
-            if (index === currentIndex) {
-              dot.classList.add("active");
-            } else {
-              dot.classList.remove("active");
-            }
-          });
-
-          // Update button states
+          carouselPagination
+            .querySelectorAll(".pagination-dot")
+            .forEach((dot, index) => {
+              dot.classList.toggle("active", index === currentIndex);
+            });
           prevBtn.disabled = currentIndex === 0;
           nextBtn.disabled = currentIndex === allCards.length - 1;
         }
 
-        // Setup carousel control buttons
         function setupCarouselControls() {
-          // Previous button
           prevBtn.onclick = () => {
             if (currentIndex > 0) {
               currentIndex--;
               updateCarouselDisplay();
             }
           };
-
-          // Next button
           nextBtn.onclick = () => {
             if (currentIndex < allCards.length - 1) {
               currentIndex++;
               updateCarouselDisplay();
             }
           };
-
-          // Add new card button
           if (addNewCardBtn) {
             addNewCardBtn.onclick = () => {
-              // Get current cards
               const currentCards = JSON.parse(
                 carouselTrack.getAttribute("data-cards")
               );
               const source = carouselTrack.getAttribute("data-source");
               const taskId = carouselTrack.getAttribute("data-task-id");
-
-              // Add a new empty card
-              currentCards.push({
-                question: "",
-                answer: "",
-              });
-
-              // Update cards
+              currentCards.push({ question: "", answer: "" });
               allCards = currentCards;
-
-              // Update the data attribute
               carouselTrack.setAttribute(
                 "data-cards",
                 JSON.stringify(currentCards)
               );
-
-              // Rebuild carousel and go to the new card
               setupCarousel(currentCards, source, taskId);
               goToCard(currentCards.length - 1);
             };
           }
         }
 
-        // Go to a specific card
         function goToCard(index) {
           if (index >= 0 && index < allCards.length) {
             currentIndex = index;
@@ -1482,118 +1311,74 @@
           }
         }
 
-        // Function to populate the grid view with all cards
         function populateGridView() {
-          // Get all cards from the carousel
           const cards = JSON.parse(
             carouselTrack.getAttribute("data-cards") || "[]"
           );
           const source = carouselTrack.getAttribute("data-source");
           const taskId = carouselTrack.getAttribute("data-task-id");
-
-          // Clear grid container
           gridContainer.innerHTML = "";
-
-          // Add each card to the grid
           cards.forEach((card, index) => {
             const gridItem = document.createElement("div");
             gridItem.className = "grid-item";
             gridItem.dataset.index = index;
-
             gridItem.innerHTML = `
-      <div class="grid-item-header">
-        <div class="qa-pair-num">Card #${index + 1}</div>
-        <button type="button" class="remove-pair" title="Remove this card">✕</button>
-      </div>
-      <div class="form-group">
-        <label for="grid-question-${index}">Question:</label>
-        <textarea id="grid-question-${index}" class="edit-question" rows="2">${
+              <div class="grid-item-header">
+                <div class="qa-pair-num">Card #${index + 1}</div>
+                <button type="button" class="remove-pair" title="Remove this card">✕</button>
+              </div>
+              <div class="form-group">
+                <label for="grid-question-${index}">Question:</label>
+                <textarea id="grid-question-${index}" class="edit-question" rows="2">${
               card.question
             }</textarea>
-      </div>
-      <div class="form-group">
-        <label for="grid-answer-${index}">Answer:</label>
-        <textarea id="grid-answer-${index}" class="edit-answer" rows="3">${
+              </div>
+              <div class="form-group">
+                <label for="grid-answer-${index}">Answer:</label>
+                <textarea id="grid-answer-${index}" class="edit-answer" rows="3">${
               card.answer
             }</textarea>
-      </div>
-    `;
-
+              </div>
+            `;
             gridContainer.appendChild(gridItem);
-
-            // Add event listener for textarea changes to sync with carousel
             const questionTextarea = gridItem.querySelector(".edit-question");
             const answerTextarea = gridItem.querySelector(".edit-answer");
-
             questionTextarea.addEventListener("input", function () {
-              // Update the card data
               cards[index].question = this.value;
               carouselTrack.setAttribute("data-cards", JSON.stringify(cards));
-
-              // Also update the carousel view if it exists
               const carouselQuestion = document.getElementById(
                 `carousel-question-${index}`
               );
-              if (carouselQuestion) {
-                carouselQuestion.value = this.value;
-              }
+              if (carouselQuestion) carouselQuestion.value = this.value;
             });
-
             answerTextarea.addEventListener("input", function () {
-              // Update the card data
               cards[index].answer = this.value;
               carouselTrack.setAttribute("data-cards", JSON.stringify(cards));
-
-              // Also update the carousel view if it exists
               const carouselAnswer = document.getElementById(
                 `carousel-answer-${index}`
               );
-              if (carouselAnswer) {
-                carouselAnswer.value = this.value;
-              }
+              if (carouselAnswer) carouselAnswer.value = this.value;
             });
-
-            // Add event listener for removing cards
             gridItem
               .querySelector(".remove-pair")
               .addEventListener("click", function () {
                 if (cards.length > 1) {
-                  // Store the current index before removal
                   const currentCardIndex = currentIndex;
-
-                  // Remove the card
                   cards.splice(index, 1);
-
-                  // Update the data attribute
                   carouselTrack.setAttribute(
                     "data-cards",
                     JSON.stringify(cards)
                   );
-
-                  // Determine which card to show after deletion
-                  let newIndex;
-                  if (index < currentCardIndex) {
-                    // If we deleted a card before the current one
-                    newIndex = currentCardIndex - 1;
-                  } else if (index === currentCardIndex) {
-                    // If we deleted the current card
-                    newIndex = Math.max(0, currentCardIndex - 1);
-                  } else {
-                    // If we deleted a card after the current one
-                    newIndex = currentCardIndex;
-                  }
-
-                  // Make sure the new index is valid
+                  let newIndex =
+                    index < currentCardIndex
+                      ? currentCardIndex - 1
+                      : index === currentCardIndex
+                      ? Math.max(0, currentCardIndex - 1)
+                      : currentCardIndex;
                   newIndex = Math.min(newIndex, cards.length - 1);
-
-                  // Update allCards
                   allCards = cards;
-
-                  // Rebuild both views
                   setupCarousel(cards, source, taskId);
                   populateGridView();
-
-                  // Go to the determined card
                   goToCard(newIndex);
                 } else {
                   alert("You need at least one flashcard");
@@ -1602,33 +1387,24 @@
           });
         }
 
-        // Create deck from QA pairs
         async function createDeckFromQAPairs(qaPairs, title) {
           try {
-            // Show loading animation
             loadingContainer.classList.add("show");
             loadingText.textContent = "Creating your Anki deck...";
-
+            const apiData = { title, qa_pairs: qaPairs };
             const response = await fetch(`${API_BASE_URL}/generate-deck`, {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                title: title,
-                qa_pairs: qaPairs,
-              }),
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(apiData),
             });
-
             if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
+              const errorText = await response.text();
+              throw new Error(
+                `HTTP error! status: ${response.status}, message: ${errorText}`
+              );
             }
-
             const data = await response.json();
-            const deckTaskId = data.task_id;
-
-            // Poll for deck creation status
-            pollDeckStatus(deckTaskId);
+            pollDeckStatus(data.task_id);
           } catch (error) {
             console.error("Error creating deck:", error);
             loadingContainer.classList.remove("show");
@@ -1636,10 +1412,9 @@
           }
         }
 
-        // Add event listeners for grid view toggle
+        // Toggle view events
         if (carouselViewBtn && gridViewBtn) {
           carouselViewBtn.addEventListener("click", function () {
-            // Switch to carousel view
             carouselViewBtn.classList.add("active");
             gridViewBtn.classList.remove("active");
             carouselContainer.classList.remove("hidden");
@@ -1649,48 +1424,30 @@
           });
 
           gridViewBtn.addEventListener("click", function () {
-            // Switch to grid view
             gridViewBtn.classList.add("active");
             carouselViewBtn.classList.remove("active");
             gridContainer.classList.remove("hidden");
             carouselContainer.classList.add("hidden");
             if (addNewCardBtn) addNewCardBtn.classList.add("hidden");
             if (gridAddNewCardBtn) gridAddNewCardBtn.classList.remove("hidden");
-
-            // Populate grid view if it hasn't been populated yet
             populateGridView();
           });
         }
 
-        // Grid Add New Card button functionality
         if (gridAddNewCardBtn) {
           gridAddNewCardBtn.addEventListener("click", function () {
-            // Get current cards
             const currentCards = JSON.parse(
               carouselTrack.getAttribute("data-cards")
             );
             const source = carouselTrack.getAttribute("data-source");
             const taskId = carouselTrack.getAttribute("data-task-id");
-
-            // Add a new empty card
-            currentCards.push({
-              question: "",
-              answer: "",
-            });
-
-            // Update cards
+            currentCards.push({ question: "", answer: "" });
             allCards = currentCards;
-
-            // Update the data attribute
             carouselTrack.setAttribute(
               "data-cards",
               JSON.stringify(currentCards)
             );
-
-            // Rebuild grid view
             populateGridView();
-
-            // Scroll to bottom to show the new card
             gridContainer.scrollTop = gridContainer.scrollHeight;
           });
         }
@@ -1704,7 +1461,6 @@
             const file = e.target.files[0];
             if (file) {
               const fileSizeMB = file.size / (1024 * 1024);
-
               if (fileSizeMB > 20) {
                 pdfFileName.innerHTML = `<span style="color: #dc3545;">${
                   file.name
@@ -1729,57 +1485,41 @@
           });
         }
 
-        // Word counter for text input
+        // Word counter for direct text input
         const directText = document.getElementById("direct-text");
         const wordCount = document.querySelector(".word-count");
-
         if (directText && wordCount) {
           directText.addEventListener("input", () => {
             const count = directText.value.length;
             wordCount.textContent = `${count} characters`;
-
-            if (count < 100) {
-              wordCount.style.color = "#dc3545";
-            } else {
-              wordCount.style.color = "#666";
-            }
+            wordCount.style.color = count < 100 ? "#dc3545" : "#666";
           });
         }
 
-        // PDF Form Submission
+        // PDF form submission
         const pdfForm = document.getElementById("pdf-form");
         let currentPdfTaskId = null;
-
         if (pdfForm) {
           pdfForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-
             const file = pdfFileInput.files[0];
             const numPairs = document.getElementById("num-pairs").value;
-
             if (!file) {
               alert("Please select a PDF file");
               return;
             }
-
             if (file.size / (1024 * 1024) > 20) {
               alert(
                 "This PDF file is too large (over 20MB). Please upload a smaller file or use the direct text input option."
               );
               return;
             }
-
             try {
-              // Show loading animation
               loadingContainer.classList.add("show");
               loadingText.textContent = "Analyzing your PDF content...";
-
-              // Create FormData
               const formData = new FormData();
               formData.append("file", file);
               formData.append("num_pairs", numPairs);
-
-              // Upload PDF
               const response = await fetch(
                 `${API_BASE_URL}/upload/pdf?num_pairs=${numPairs}`,
                 {
@@ -1787,15 +1527,10 @@
                   body: formData,
                 }
               );
-
-              if (!response.ok) {
+              if (!response.ok)
                 throw new Error(`HTTP error! status: ${response.status}`);
-              }
-
               const data = await response.json();
               currentPdfTaskId = data.task_id;
-
-              // Start polling for status
               pollPdfStatus(currentPdfTaskId);
             } catch (error) {
               console.error("Error:", error);
@@ -1805,53 +1540,35 @@
           });
         }
 
-        // Text Form Submission
+        // Direct text form submission
         const textForm = document.getElementById("text-form");
-
         if (textForm) {
           textForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-
             const text = directText.value.trim();
             const numPairs = document.getElementById("text-num-pairs").value;
-
             if (!text) {
               alert("Please enter some text");
               return;
             }
-
             if (text.length < 100) {
               alert(
                 "The text is too short. Please provide more content to generate meaningful questions (at least 100 characters)."
               );
               return;
             }
-
             try {
-              // Show loading animation
               loadingContainer.classList.add("show");
               loadingText.textContent = "Analyzing your text content...";
-
-              // Process text
               const response = await fetch(`${API_BASE_URL}/process/text`, {
                 method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  text: text,
-                  num_pairs: parseInt(numPairs),
-                }),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text, num_pairs: parseInt(numPairs) }),
               });
-
-              if (!response.ok) {
+              if (!response.ok)
                 throw new Error(`HTTP error! status: ${response.status}`);
-              }
-
               const data = await response.json();
               currentPdfTaskId = data.task_id;
-
-              // Start polling for status (reusing the same function)
               pollPdfStatus(currentPdfTaskId, "text");
             } catch (error) {
               console.error("Error:", error);
@@ -1861,45 +1578,33 @@
           });
         }
 
-        // Update manual pair numbers
+        // Update manual entry pair numbers
         function updateManualPairNumbers() {
-          const pairs = qaPairsContainer.querySelectorAll(".qa-pair");
-          pairs.forEach((pair, index) => {
-            pair.querySelector(".qa-pair-num").textContent = `Card #${
-              index + 1
-            }`;
-          });
+          document
+            .querySelectorAll("#qa-pairs-container .qa-pair")
+            .forEach((pair, index) => {
+              pair.querySelector(".qa-pair-num").textContent = `Card #${
+                index + 1
+              }`;
+            });
         }
 
-        // Manual Form Submission
         if (manualForm) {
           manualForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-
             const title = document.getElementById("deck-title").value;
             const qaPairs = [];
-
-            // Collect all QA pairs
-            const questionInputs = document.querySelectorAll(".question-input");
-            const answerInputs = document.querySelectorAll(".answer-input");
-
-            for (let i = 0; i < questionInputs.length; i++) {
-              const question = questionInputs[i].value.trim();
-              const answer = answerInputs[i].value.trim();
-
-              if (question && answer) {
-                qaPairs.push({
-                  question: question,
-                  answer: answer,
-                });
-              }
-            }
-
+            document.querySelectorAll(".question-input").forEach((input, i) => {
+              const question = input.value.trim();
+              const answer = document
+                .querySelectorAll(".answer-input")
+                [i].value.trim();
+              if (question && answer) qaPairs.push({ question, answer });
+            });
             if (qaPairs.length === 0) {
               alert("Please add at least one question-answer pair");
               return;
             }
-
             createDeckFromQAPairs(qaPairs, title);
           });
         }
@@ -1909,37 +1614,26 @@
           try {
             const response = await fetch(`${API_BASE_URL}/status/${taskId}`);
             if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
+              const errorText = await response.text();
+              throw new Error(
+                `HTTP error! status: ${response.status}, message: ${errorText}`
+              );
             }
-
             const data = await response.json();
-
-            // Update loading text
-            if (data.message) {
-              loadingText.textContent = data.message;
-            }
-
+            if (data.message) loadingText.textContent = data.message;
             if (data.status === "completed") {
-              // Store deck task ID for download
               document
                 .getElementById("download-deck")
                 .setAttribute("data-task-id", taskId);
-
-              // Hide loading and show download page
               loadingContainer.classList.remove("show");
               showPage(downloadPage);
-
-              // Show notification
               showNotification("Deck created successfully!");
             } else if (data.status === "failed") {
               loadingContainer.classList.remove("show");
               alert(
-                `Error: ${
-                  data.message || "An error occurred while creating the deck."
-                }`
+                data.message || "An error occurred while creating the deck."
               );
             } else {
-              // Continue polling
               setTimeout(() => pollDeckStatus(taskId), 1000);
             }
           } catch (error) {
@@ -1949,16 +1643,14 @@
           }
         }
 
-        // Download deck
+        // Download deck event
         const downloadDeckBtn = document.getElementById("download-deck");
         if (downloadDeckBtn) {
           downloadDeckBtn.addEventListener("click", function () {
             const taskId = this.getAttribute("data-task-id");
-            if (taskId) {
+            if (taskId)
               window.location.href = `${API_BASE_URL}/download/${taskId}`;
-            } else {
-              alert("Error: Task ID not found.");
-            }
+            else alert("Error: Task ID not found.");
           });
         }
 
@@ -1967,76 +1659,60 @@
           const notification = document.getElementById("notification");
           notification.textContent = message;
           notification.classList.add("show");
-
-          // Hide after 3 seconds
-          setTimeout(() => {
-            notification.classList.remove("show");
-          }, 3000);
+          setTimeout(() => notification.classList.remove("show"), 3000);
         }
 
-        // Add remove button to first QA pair in manual entry
+        // Add remove button to first QA pair in manual entry if missing
         const firstPair = qaPairsContainer
           ? qaPairsContainer.querySelector(".qa-pair")
           : null;
-        if (firstPair) {
-          // Add remove button if not already present
-          if (!firstPair.querySelector(".remove-pair")) {
-            const header = firstPair.querySelector(".qa-pair-header");
-            if (header) {
-              const removeBtn = document.createElement("button");
-              removeBtn.type = "button";
-              removeBtn.className = "remove-pair";
-              removeBtn.title = "Remove this pair";
-              removeBtn.textContent = "✕";
-
-              header.appendChild(removeBtn);
-
-              // Add event listener
-              removeBtn.addEventListener("click", function () {
-                if (document.querySelectorAll(".qa-pair").length > 1) {
-                  firstPair.remove();
-                  pairCount--;
-                  updateManualPairNumbers();
-                } else {
-                  alert("You need at least one question-answer pair");
-                }
-              });
-            }
+        if (firstPair && !firstPair.querySelector(".remove-pair")) {
+          const header = firstPair.querySelector(".qa-pair-header");
+          if (header) {
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.className = "remove-pair";
+            removeBtn.title = "Remove this pair";
+            removeBtn.textContent = "✕";
+            header.appendChild(removeBtn);
+            removeBtn.addEventListener("click", function () {
+              if (document.querySelectorAll(".qa-pair").length > 1) {
+                firstPair.remove();
+                pairCount--;
+                updateManualPairNumbers();
+              } else {
+                alert("You need at least one question-answer pair");
+              }
+            });
           }
         }
 
-        // Add keyboard navigation for carousel and grid views
+        // Keyboard navigation for carousel view
         document.addEventListener("keydown", function (e) {
-          if (qaReview.classList.contains("active")) {
-            if (!gridContainer.classList.contains("hidden")) {
-              // Grid view active - no special keyboard handling needed
-              return;
-            }
-
-            if (e.key === "ArrowLeft") {
-              // Left arrow - previous card
-              if (currentIndex > 0) {
-                currentIndex--;
-                updateCarouselDisplay();
-              }
-            } else if (e.key === "ArrowRight") {
-              // Right arrow - next card
-              if (currentIndex < allCards.length - 1) {
-                currentIndex++;
-                updateCarouselDisplay();
-              }
+          if (
+            qaReview.classList.contains("active") &&
+            gridContainer.classList.contains("hidden")
+          ) {
+            if (e.key === "ArrowLeft" && currentIndex > 0) {
+              currentIndex--;
+              updateCarouselDisplay();
+            } else if (
+              e.key === "ArrowRight" &&
+              currentIndex < allCards.length - 1
+            ) {
+              currentIndex++;
+              updateCarouselDisplay();
             }
           }
         });
 
-        // Add QA pair in manual entry
+        // Add new QA pair in manual entry
         const addPairBtn = document.getElementById("add-pair");
         if (addPairBtn) {
           addPairBtn.addEventListener("click", () => {
             pairCount++;
             const newPair = document.createElement("div");
             newPair.className = "qa-pair";
-
             newPair.innerHTML = `
               <div class="qa-pair-header">
                 <div class="qa-pair-num">Card #${pairCount}</div>
@@ -2055,10 +1731,7 @@
                 }" class="answer-input" required placeholder="Enter your answer" rows="3"></textarea>
               </div>
             `;
-
             qaPairsContainer.appendChild(newPair);
-
-            // Add event listener for remove button
             newPair
               .querySelector(".remove-pair")
               .addEventListener("click", function () {
@@ -2079,34 +1752,32 @@
         );
         if (createDeckFromQABtn) {
           createDeckFromQABtn.addEventListener("click", function () {
-            // Get current cards from carousel data attribute
-            const cards = JSON.parse(
-              carouselTrack.getAttribute("data-cards") || "[]"
+            const cardsData = JSON.parse(
+              document
+                .getElementById("carousel-track")
+                .getAttribute("data-cards") || "[]"
             );
-
-            // Validate cards
-            const validCards = cards.filter(
-              (card) => card.question.trim() && card.answer.trim()
-            );
-
-            if (validCards.length === 0) {
-              alert("Please provide at least one valid question-answer pair");
+            if (cardsData.length === 0) {
+              alert("Error: No flashcards found");
               return;
             }
-
-            // Prompt for deck title
-            const title = prompt(
-              "Enter a title for your deck:",
-              "Generated Deck"
+            const invalidCards = cardsData.filter(
+              (card) => !card.question.trim() || !card.answer.trim()
             );
-            if (!title) return;
-
-            // Create deck
-            createDeckFromQAPairs(validCards, title);
+            if (invalidCards.length > 0) {
+              alert(
+                `Error: ${invalidCards.length} cards have empty questions or answers. Please complete all cards.`
+              );
+              return;
+            }
+            const deckTitle = prompt(
+              "Enter a title for your Anki deck:",
+              "My Flashcards"
+            );
+            if (!deckTitle) return;
+            createDeckFromQAPairs(cardsData, deckTitle);
           });
         }
-
-        console.log("All event listeners attached successfully");
       });
     </script>
   </body>

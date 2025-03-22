@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.info("Starting Anki Deck Generator application")
 
-# Initialize FastAPI app
+# Initialise FastAPI app
 app = FastAPI(title="AI-Powered Anki Deck Generator")
 
 # Add CORS middleware
@@ -186,11 +186,11 @@ async def upload_pdf(
         if file_size > 20 * 1024 * 1024:  # 20MB
             raise ValueError("PDF file is too large (over 20MB). Please upload a smaller file.")
         
-        # Initialize task status
+        # Initialise task status
         tasks_status[task_id] = {
             "status": "processing",
             "progress": 0.0,
-            "message": f"Initializing (generating {num_pairs} Q&A pairs)",
+            "message": f"Initialising (generating {num_pairs} Q&A pairs)",
             "file_path": None,
             "qa_pairs": None
         }
@@ -447,6 +447,8 @@ def create_anki_deck(title: str, qa_pairs: List[Dict[str, str]]) -> str:
     # Create a unique model ID and deck ID
     model_id = random.randrange(1 << 30, 1 << 31)
     deck_id = random.randrange(1 << 30, 1 << 31)
+
+    logger.info(f"Creating Anki deck with title: {title}")
     
     # Define the card model (template)
     model = genanki.Model(
@@ -504,7 +506,7 @@ async def generate_deck(request: DeckRequest, background_tasks: BackgroundTasks)
     # Generate a unique task ID
     task_id = f"deck_{random.randint(10000, 99999)}"
     
-    # Initialize task status
+    # Initialise task status
     tasks_status[task_id] = {
         "status": "processing",
         "progress": 0.0,
@@ -612,7 +614,7 @@ async def process_text(request: ProcessTextRequest, background_tasks: Background
     # Generate a unique task ID
     task_id = f"task_{random.randint(10000, 99999)}"
     
-    # Initialize task status
+    # Initialise task status
     tasks_status[task_id] = {
         "status": "processing",
         "progress": 0.0,
