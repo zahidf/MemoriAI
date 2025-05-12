@@ -14,6 +14,7 @@ import openai
 import genanki
 import random
 import time
+from youtube_transcript_api import YouTubeTranscriptApi
 
 load_dotenv()
 
@@ -27,10 +28,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-logger.info("Starting Anki Deck Generator application")
+logger.info("Starting MemoriAI")
 
 # Initialise FastAPI app
-app = FastAPI(title="AI-Powered Anki Deck Generator")
+app = FastAPI(title="MemoriAI Anki Deck Generator")
 
 # Add CORS middleware
 app.add_middleware(
@@ -699,6 +700,134 @@ async def test_deepseek():
         return {"status": "success", "message": "DeepSeek API is working correctly", "response": content}
     except Exception as e:
         return {"status": "error", "message": f"Error testing DeepSeek API: {str(e)}"}
+    
+
+def extract_youtube_id(url: str) -> str:
+    """Extract YouTube video ID from URL."""
+    import re
+    patterns = [
+        r'(?:v=|\/)([0-9A-Za-z_-]{11}).*',
+        r'(?:embed\/)([0-9A-Za-z_-]{11})',
+        r'(?:watch\?v=)([0-9A-Za-z_-]{11})'
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    raise ValueError("Invalid YouTube URL format")
+
+class YoutubeRequest(BaseModel):
+    url: str
+    num_pairs: int
+
+@app.post("/process/youtube", response_model=ProcessingStatus)
+async def process_youtube(request: YoutubeRequest, background_tasks: BackgroundTasks):
+    """Process YouTube video transcript to generate QA pairs."""
+    # Generate a unique task ID
+    task_id = f"task_{random.randint(10000, 99999)}"
+    
+    # Initialize task status
+    tasks_status[task_id] = {
+        "status": "processing",
+        "progress": 0.0,
+        "message": "Starting YouTube transcript processing",
+        "qa_pairs": None,
+        "timestamp": time.time()
+    }
+    
+    # Process the transcript in the background
+    background_tasks.add_task(process_youtube_task, task_id, request.url, request.num_pairs)
+    
+    return ProcessingStatus(task_id=task_id, status="processing", progress=0.0)
+
+async def process_youtube_task(task_id: str, url: str, num_pairs: int):
+    """Process YouTube transcript in the background."""
+    try:
+        # Validate num_pairs
+        try:
+            num_pairs = int(num_pairs)
+            if num_pairs < 1:
+                num_pairs = 1
+            elif num_pairs > 50:
+                num_pairs = 50
+            logger.info(f"Processing YouTube transcript to generate {num_pairs} Q&A pairs")
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid num_pairs value: {num_pairs}, using default of 10")
+            num_pairs = 10
+        
+        # Update status
+        tasks_status[task_id].update({
+            "progress": 0.1,
+            "message": "Extracting YouTube video ID"
+        })
+        
+        # Extract video ID from URL
+        try:
+            video_id = extract_youtube_id(url)
+            logger.info(f"Extracted YouTube video ID: {video_id}")
+        except ValueError as e:
+            tasks_status[task_id].update({
+                "status": "failed", 
+                "message": str(e)
+            })
+            return
+        
+        # Update status
+        tasks_status[task_id].update({
+            "progress": 0.3,
+            "message": "Fetching transcript from YouTube"
+        })
+        
+        # Fetch transcript
+        try:
+            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+            transcript_text = ""
+            for item in transcript_list:
+                transcript_text += item['text'] + " "
+            
+            logger.info(f"Successfully fetched transcript: {len(transcript_text)} characters")
+            
+            # Check if transcript is too short
+            if len(transcript_text.strip()) < 100:
+                tasks_status[task_id].update({
+                    "status": "failed",
+                    "message": "The transcript is too short. Please try a different video with more content."
+                })
+                return
+                
+        except Exception as e:
+            logger.error(f"Error fetching YouTube transcript: {str(e)}")
+            tasks_status[task_id].update({
+                "status": "failed",
+                "message": f"Failed to fetch transcript: {str(e)}"
+            })
+            return
+        
+        # Update status
+        tasks_status[task_id].update({
+            "progress": 0.5,
+            "message": f"Processing transcript (generating {num_pairs} Q&A pairs)"
+        })
+        
+        # Generate QA pairs from transcript
+        qa_pairs = generate_qa_pairs(transcript_text, num_pairs)
+        logger.info(f"Successfully generated {len(qa_pairs)} Q&A pairs")
+        
+        # Update status
+        tasks_status[task_id].update({
+            "progress": 1.0,
+            "status": "completed",
+            "message": f"Processing complete ({len(qa_pairs)} Q&A pairs generated)",
+            "qa_pairs": qa_pairs
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in process_youtube_task: {str(e)}", exc_info=True)
+        tasks_status[task_id].update({
+            "status": "failed",
+            "message": f"Error processing YouTube transcript: {str(e)}"
+        })
 
 # Run the application with: uvicorn main:app --reload
 if __name__ == "__main__":
@@ -717,3 +846,4 @@ if __name__ == "__main__":
         print("pip install fastapi uvicorn python-multipart PyPDF2 openai genanki")
         import sys
         sys.exit(1)
+
