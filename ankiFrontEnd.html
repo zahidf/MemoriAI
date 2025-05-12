@@ -970,7 +970,7 @@
       <div class="page" id="youtube-input">
         <div class="card">
           <h2>YouTube Video Transcript</h2>
-          <p>Enter a YouTube video URL to generate question-answer pairs from its transcript.</p>
+          <p>Enter a YouTube video URL to generate question-answer pairs.</p>
           <form id="youtube-form">
             <div class="form-group">
               <label for="youtube-url">YouTube Video URL</label>
@@ -1142,7 +1142,6 @@
         if (youtubeBackBtn)
           youtubeBackBtn.addEventListener("click", () => showPage(methodSelection));
 
-        // Add this with the other form submission handlers
         if (youtubeForm) {
           youtubeForm.addEventListener("submit", async (e) => {
             e.preventDefault();
