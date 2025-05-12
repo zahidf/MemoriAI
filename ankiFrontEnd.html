@@ -801,7 +801,7 @@
               </svg>
             </div>
             <h3>YouTube Video</h3>
-            <p>Generate flashcards from YouTube video transcript</p>
+            <p>Generate flashcards from YouTube video</p>
           </div>
 
         </div>
@@ -969,7 +969,7 @@
       <!--Youtube Input Page -->
       <div class="page" id="youtube-input">
         <div class="card">
-          <h2>YouTube Video Transcript</h2>
+          <h2>YouTube Video To Flashcards</h2>
           <p>Enter a YouTube video URL to generate question-answer pairs.</p>
           <form id="youtube-form">
             <div class="form-group">
@@ -1162,7 +1162,7 @@
             
             try {
               loadingContainer.classList.add("show");
-              loadingText.textContent = "Fetching YouTube transcript...";
+              loadingText.textContent = "Fetching Video...";
               const response = await fetch(`${API_BASE_URL}/process/youtube`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
