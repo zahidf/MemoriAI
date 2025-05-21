@@ -15,6 +15,9 @@ import genanki
 import random
 import time
 from youtube_transcript_api import YouTubeTranscriptApi
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+from pathlib import Path
 
 load_dotenv()
 
@@ -152,6 +155,10 @@ def add_timestamp_to_task(task_id: str):
     if task_id in tasks_status:
         tasks_status[task_id]["timestamp"] = time.time()
 
+
+@app.get("/", response_class=HTMLResponse)
+async def get_html():
+    return Path("ankiFrontEnd.html").read_text()
 # Helper functions
 @app.post("/upload/pdf", response_model=ProcessingStatus)
 async def upload_pdf(
