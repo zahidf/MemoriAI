@@ -137,6 +137,7 @@
         padding: 2.5rem;
         margin-bottom: 2rem;
         max-width: 1200px;
+        width: 100%;
         margin-left: auto;
         margin-right: auto;
       }
@@ -673,12 +674,13 @@
       /* Grid layout styles */
       .grid-container {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        grid-template-columns: repeat(3, 1fr);
         gap: 1.5rem;
         margin-top: 2rem;
         max-height: 70vh;
         overflow-y: auto;
         padding: 0.5rem;
+        width: 100%;
       }
 
       .grid-item {
@@ -690,6 +692,7 @@
         display: flex;
         flex-direction: column;
         position: relative;
+        max-width: 100%;
       }
 
       .grid-item::before {
@@ -797,13 +800,14 @@
           <div class="method-card" id="youtube-method">
             <div class="method-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M10,15L15.19,12L10,9V15M21.56,7.17C21.69,7.64 21.78,8.27 21.84,9.07C21.91,9.87 21.94,10.56 21.94,11.16L22,12C22,14.19 21.84,15.8 21.56,16.83C21.31,17.73 20.73,18.31 19.83,18.56C19.36,18.69 18.5,18.78 17.18,18.84C15.88,18.91 14.69,18.94 13.59,18.94L12,19C7.81,19 5.2,18.84 4.17,18.56C3.27,18.31 2.69,17.73 2.44,16.83C2.31,16.36 2.22,15.73 2.16,14.93C2.09,14.13 2.06,13.44 2.06,12.84L2,12C2,9.81 2.16,8.2 2.44,7.17C2.69,6.27 3.27,5.69 4.17,5.44C4.64,5.31 5.5,5.22 6.82,5.16C8.12,5.09 9.31,5.06 10.41,5.06L12,5C16.19,5 18.8,5.16 19.83,5.44C20.73,5.69 21.31,6.27 21.56,7.17Z" />
+                <path
+                  d="M10,15L15.19,12L10,9V15M21.56,7.17C21.69,7.64 21.78,8.27 21.84,9.07C21.91,9.87 21.94,10.56 21.94,11.16L22,12C22,14.19 21.84,15.8 21.56,16.83C21.31,17.73 20.73,18.31 19.83,18.56C19.36,18.69 18.5,18.78 17.18,18.84C15.88,18.91 14.69,18.94 13.59,18.94L12,19C7.81,19 5.2,18.84 4.17,18.56C3.27,18.31 2.69,17.73 2.44,16.83C2.31,16.36 2.22,15.73 2.16,14.93C2.09,14.13 2.06,13.44 2.06,12.84L2,12C2,9.81 2.16,8.2 2.44,7.17C2.69,6.27 3.27,5.69 4.17,5.44C4.64,5.31 5.5,5.22 6.82,5.16C8.12,5.09 9.31,5.06 10.41,5.06L12,5C16.19,5 18.8,5.16 19.83,5.44C20.73,5.69 21.31,6.27 21.56,7.17Z"
+                />
               </svg>
             </div>
             <h3>YouTube Video</h3>
             <p>Generate flashcards from YouTube video</p>
           </div>
-
         </div>
       </div>
 
@@ -974,18 +978,20 @@
           <form id="youtube-form">
             <div class="form-group">
               <label for="youtube-url">YouTube Video URL</label>
-              <input 
-                type="text" 
-                id="youtube-url" 
-                required 
-                placeholder="https://www.youtube.com/watch?v=..." 
+              <input
+                type="text"
+                id="youtube-url"
+                required
+                placeholder="https://www.youtube.com/watch?v=..."
                 pattern="^(https?://)?(www\.)?(youtube\.com|youtu\.be)/.+"
                 title="Please enter a valid YouTube URL"
               />
             </div>
 
             <div class="form-group">
-              <label for="youtube-num-pairs">Number of Q&A Pairs to Generate</label>
+              <label for="youtube-num-pairs"
+                >Number of Q&A Pairs to Generate</label
+              >
               <input
                 type="number"
                 id="youtube-num-pairs"
@@ -1140,26 +1146,29 @@
         if (youtubeMethod)
           youtubeMethod.addEventListener("click", () => showPage(youtubeInput));
         if (youtubeBackBtn)
-          youtubeBackBtn.addEventListener("click", () => showPage(methodSelection));
+          youtubeBackBtn.addEventListener("click", () =>
+            showPage(methodSelection)
+          );
 
         if (youtubeForm) {
           youtubeForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             const url = document.getElementById("youtube-url").value.trim();
             const numPairs = document.getElementById("youtube-num-pairs").value;
-            
+
             if (!url) {
               alert("Please enter a YouTube video URL");
               return;
             }
-            
+
             // Validate YouTube URL format
-            const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/;
+            const youtubeRegex =
+              /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/;
             if (!youtubeRegex.test(url)) {
               alert("Please enter a valid YouTube URL");
               return;
             }
-            
+
             try {
               loadingContainer.classList.add("show");
               loadingText.textContent = "Fetching Video...";
