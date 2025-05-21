@@ -80,6 +80,7 @@ class ProcessingStatus(BaseModel):
     status: str
     progress: float = 0.0
     message: Optional[str] = None
+    estimated_count: Optional[int] = None
 
 class QAPair(BaseModel):
     question: str
@@ -91,7 +92,7 @@ class DeckRequest(BaseModel):
 
 class ProcessTextRequest(BaseModel):
     text: str
-    num_pairs: int
+    num_pairs: int = 0  # 0 means use the estimated count
 
 # In-memory storage for task status
 tasks_status = {}
@@ -156,27 +157,13 @@ def add_timestamp_to_task(task_id: str):
 async def upload_pdf(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    num_pairs: int = 10
+    num_pairs: Optional[int] = None
 ):
-    logger.info(f"Received num_pairs parameter: {num_pairs}")
-    """Upload a PDF file for processing."""
     try:
         # Generate a unique task ID
         task_id = f"task_{random.randint(10000, 99999)}"
         
-        # Validate num_pairs
-        try:
-            num_pairs = int(num_pairs)
-            if num_pairs < 1:
-                num_pairs = 1
-            elif num_pairs > 50:
-                num_pairs = 50
-            logger.info(f"Requested {num_pairs} Q&A pairs")
-        except (ValueError, TypeError):
-            logger.warning(f"Invalid num_pairs value: {num_pairs}, using default of 10")
-            num_pairs = 10
-        
-        # Read the file content immediately to prevent "I/O operation on closed file" error
+        # Read the file content immediately
         logger.info(f"Reading file content for {file.filename}")
         file_content = await file.read()
         file_size = len(file_content)
@@ -187,26 +174,56 @@ async def upload_pdf(
         if file_size > 20 * 1024 * 1024:  # 20MB
             raise ValueError("PDF file is too large (over 20MB). Please upload a smaller file.")
         
-        # Initialise task status
+        # Create a temporary file to count pages
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+        temp_file.write(file_content)
+        temp_file.close()
+        
+        # Count pages in the PDF
+        try:
+            import fitz  # PyMuPDF
+            doc = fitz.open(temp_file.name)
+            page_count = len(doc)
+            doc.close()
+        except Exception as e:
+            logger.warning(f"Could not count PDF pages: {str(e)}")
+            page_count = max(1, file_size // (100 * 1024))  # Rough estimate based on file size
+        finally:
+            os.unlink(temp_file.name)
+        
+        # Estimate appropriate number of cards
+        estimated_count = estimate_card_count("pdf", page_count)
+        
+        # Use provided count if specified, otherwise use estimate
+        if num_pairs is None or num_pairs <= 0:
+            num_pairs = estimated_count
+        else:
+            num_pairs = min(50, max(1, int(num_pairs)))
+        
+        logger.info(f"Estimated {estimated_count} cards for {page_count} pages, using {num_pairs}")
+        
+        # Initialize task status
         tasks_status[task_id] = {
             "status": "processing",
             "progress": 0.0,
-            "message": f"Initialising (generating {num_pairs} Q&A pairs)",
+            "message": f"Initializing (generating {num_pairs} Q&A pairs)",
             "file_path": None,
-            "qa_pairs": None
+            "qa_pairs": None,
+            "estimated_count": estimated_count
         }
         
         # Add timestamp to track task age
         add_timestamp_to_task(task_id)
         
-        # Start background processing with file content instead of file object
+        # Start background processing with file content
         background_tasks.add_task(process_pdf, task_id, file_content, file.filename, num_pairs)
         
         return ProcessingStatus(
             task_id=task_id,
             status="processing",
             progress=0.0,
-            message=f"PDF upload received, processing started (generating {num_pairs} Q&A pairs)"
+            message=f"PDF upload received, processing started (generating {num_pairs} Q&A pairs)",
+            estimated_count=estimated_count
         )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
@@ -611,23 +628,38 @@ async def get_qa_pairs(task_id: str):
 
 @app.post("/process/text", response_model=ProcessingStatus)
 async def process_text(request: ProcessTextRequest, background_tasks: BackgroundTasks):
-    """Process text directly to generate QA pairs."""
     # Generate a unique task ID
     task_id = f"task_{random.randint(10000, 99999)}"
     
-    # Initialise task status
+    # Estimate appropriate number of cards based on text length
+    text_length = len(request.text)
+    estimated_count = estimate_card_count("text", text_length)
+    
+    # Use provided count if specified, otherwise use estimate
+    num_pairs = request.num_pairs if request.num_pairs > 0 else estimated_count
+    num_pairs = min(50, max(1, num_pairs))
+    
+    logger.info(f"Estimated {estimated_count} cards for {text_length} chars, using {num_pairs}")
+    
+    # Initialize task status
     tasks_status[task_id] = {
         "status": "processing",
         "progress": 0.0,
         "message": "Starting text processing",
         "qa_pairs": None,
-        "timestamp": time.time()  # Add timestamp
+        "timestamp": time.time(),
+        "estimated_count": estimated_count
     }
     
     # Process the text in the background
-    background_tasks.add_task(process_text_task, task_id, request.text, request.num_pairs)
+    background_tasks.add_task(process_text_task, task_id, request.text, num_pairs)
     
-    return ProcessingStatus(task_id=task_id, status="processing", progress=0.0)
+    return ProcessingStatus(
+        task_id=task_id, 
+        status="processing", 
+        progress=0.0,
+        estimated_count=estimated_count
+    )
 
 async def process_text_task(task_id: str, text: str, num_pairs: int):
     """Process text in the background."""
@@ -702,6 +734,38 @@ async def test_deepseek():
         return {"status": "error", "message": f"Error testing DeepSeek API: {str(e)}"}
     
 
+def estimate_card_count(content_type, content_size):
+    """
+    Estimate appropriate number of flashcards based on content type and size.
+    
+    Parameters:
+    - content_type: "pdf", "text", or "youtube"
+    - content_size: For PDF: number of pages, for text: word count, for YouTube: duration in seconds
+    
+    Returns:
+    - estimated_count: Recommended number of cards
+    """
+    if content_type == "pdf":
+        # Estimate 2-3 cards per page
+        estimated_count = max(5, round(content_size * 2.5))
+    elif content_type == "text":
+        # Estimate 1 card per 150 words
+        word_count = content_size / 6  # Rough estimate of words from character count
+        estimated_count = max(5, round(word_count / 150))
+    elif content_type == "youtube":
+        # Estimate 1 card per minute of content
+        minutes = content_size / 60
+        estimated_count = max(5, round(minutes))
+    else:
+        # Default fallback
+        estimated_count = 10
+    
+    # Round to nearest 5 for cleaner presentation
+    estimated_count = round(estimated_count / 5) * 5
+    
+    # Cap at reasonable maximum
+    return min(estimated_count, 50)
+
 def extract_youtube_id(url: str) -> str:
     """Extract YouTube video ID from URL."""
     import re
@@ -719,13 +783,25 @@ def extract_youtube_id(url: str) -> str:
 
 class YoutubeRequest(BaseModel):
     url: str
-    num_pairs: int
+    num_pairs: int = 0  # 0 means use the estimated count
 
 @app.post("/process/youtube", response_model=ProcessingStatus)
 async def process_youtube(request: YoutubeRequest, background_tasks: BackgroundTasks):
-    """Process YouTube video transcript to generate QA pairs."""
     # Generate a unique task ID
     task_id = f"task_{random.randint(10000, 99999)}"
+    
+    # Extract video ID and get duration if possible
+    try:
+        video_id = extract_youtube_id(request.url)
+        # We'll use a default duration since getting actual duration requires additional API calls
+        estimated_duration_minutes = 10  # Default assumption: 10 minute video
+        estimated_count = estimate_card_count("youtube", estimated_duration_minutes * 60)
+    except:
+        estimated_count = 10  # Fallback
+    
+    # Use provided count if specified, otherwise use estimate
+    num_pairs = request.num_pairs if request.num_pairs > 0 else estimated_count
+    num_pairs = min(50, max(1, num_pairs))
     
     # Initialize task status
     tasks_status[task_id] = {
@@ -733,13 +809,19 @@ async def process_youtube(request: YoutubeRequest, background_tasks: BackgroundT
         "progress": 0.0,
         "message": "Starting YouTube transcript processing",
         "qa_pairs": None,
-        "timestamp": time.time()
+        "timestamp": time.time(),
+        "estimated_count": estimated_count
     }
     
     # Process the transcript in the background
-    background_tasks.add_task(process_youtube_task, task_id, request.url, request.num_pairs)
+    background_tasks.add_task(process_youtube_task, task_id, request.url, num_pairs)
     
-    return ProcessingStatus(task_id=task_id, status="processing", progress=0.0)
+    return ProcessingStatus(
+        task_id=task_id, 
+        status="processing", 
+        progress=0.0,
+        estimated_count=estimated_count
+    )
 
 async def process_youtube_task(task_id: str, url: str, num_pairs: int):
     """Process YouTube transcript in the background."""

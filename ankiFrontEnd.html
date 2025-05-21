@@ -724,6 +724,150 @@
         min-height: 60px;
       }
 
+      .card-count-estimator {
+        background-color: #f8f9fa;
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .estimate-message {
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+        text-align: center;
+        line-height: 1.5;
+      }
+
+      .density-selector {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .density-btn {
+        background-color: #f0f0f0;
+        border: 1px solid #ddd;
+        border-radius: var(--border-radius);
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex: 1;
+        max-width: 150px;
+        color: #333333; /* Darker text color for better contrast */
+        font-weight: 500; /* Make text slightly bolder */
+      }
+
+      .density-btn-wrapper {
+        position: relative;
+        flex: 1;
+        max-width: 150px;
+      }
+
+      .density-tooltip {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #333;
+        color: white;
+        padding: 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s, visibility 0.2s;
+        z-index: 10;
+        margin-bottom: 5px;
+      }
+
+      .density-tooltip::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #333 transparent transparent transparent;
+      }
+
+      .density-btn-wrapper:hover .density-tooltip {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .density-btn:hover {
+        background-color: #e0e0e0;
+        border-color: #ccc;
+      }
+
+      .density-btn.active {
+        background-color: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Add subtle shadow for emphasis */
+      }
+      .custom-count-container {
+        border-top: 1px solid #eee;
+        padding-top: 1rem;
+      }
+
+      .custom-count-toggle {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .custom-count-toggle input {
+        margin-right: 0.5rem;
+      }
+
+      .custom-count-input {
+        margin-top: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .custom-count-input input {
+        width: 80px;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      @keyframes countHighlight {
+        0% {
+          color: var(--primary-color);
+          transform: scale(1);
+        }
+        50% {
+          color: var(--primary-color);
+          transform: scale(1.2);
+        }
+        100% {
+          color: inherit;
+          transform: scale(1);
+        }
+      }
+
+      .count-updated {
+        animation: countHighlight 0.6s ease;
+      }
+
+      /* Make the count more prominent */
+      #estimated-card-count,
+      #text-estimated-card-count,
+      #youtube-estimated-card-count {
+        font-weight: 600;
+        color: var(--primary-color);
+        padding: 0 3px;
+      }
+
       @media (max-width: 768px) {
         .container {
           padding: 1rem;
@@ -846,15 +990,72 @@
             </div>
 
             <div class="form-group">
-              <label for="num-pairs">Number of Q&A Pairs to Generate</label>
-              <input
-                type="number"
-                id="num-pairs"
-                min="1"
-                max="50"
-                value="10"
-                required
-              />
+              <label>Number of Q&A Pairs to Generate</label>
+              <div class="card-count-estimator">
+                <p class="estimate-message">
+                  We'll generate approximately
+                  <span id="estimated-card-count">10</span> cards based on your
+                  content
+                </p>
+
+                <div class="density-selector">
+                  <div class="density-btn-wrapper">
+                    <div class="density-tooltip">
+                      Approximately <span class="fewer-count">7</span> cards
+                    </div>
+                    <button
+                      type="button"
+                      class="density-btn"
+                      data-density="fewer"
+                    >
+                      Fewer
+                    </button>
+                  </div>
+                  <div class="density-btn-wrapper">
+                    <div class="density-tooltip">
+                      Approximately
+                      <span class="recommended-count">10</span> cards
+                    </div>
+                    <button
+                      type="button"
+                      class="density-btn active"
+                      data-density="recommended"
+                    >
+                      Recommended
+                    </button>
+                  </div>
+                  <div class="density-btn-wrapper">
+                    <div class="density-tooltip">
+                      Approximately <span class="more-count">13</span> cards
+                    </div>
+                    <button
+                      type="button"
+                      class="density-btn"
+                      data-density="more"
+                    >
+                      More
+                    </button>
+                  </div>
+                </div>
+
+                <div class="custom-count-container">
+                  <label for="custom-count-toggle" class="custom-count-toggle">
+                    <input type="checkbox" id="custom-count-toggle" />
+                    <span>Specify custom count</span>
+                  </label>
+
+                  <div class="custom-count-input hidden">
+                    <label for="num-pairs">Custom count:</label>
+                    <input
+                      type="number"
+                      id="num-pairs"
+                      min="1"
+                      max="50"
+                      value="10"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="actions">
@@ -887,17 +1088,75 @@
             </div>
 
             <div class="form-group">
-              <label for="text-num-pairs"
-                >Number of Q&A Pairs to Generate</label
-              >
-              <input
-                type="number"
-                id="text-num-pairs"
-                min="1"
-                max="50"
-                value="10"
-                required
-              />
+              <label>Number of Q&A Pairs to Generate</label>
+              <div class="card-count-estimator">
+                <p class="estimate-message">
+                  We'll generate approximately
+                  <span id="text-estimated-card-count">10</span> cards based on
+                  your content
+                </p>
+
+                <div class="density-selector">
+                  <div class="density-btn-wrapper">
+                    <div class="density-tooltip">
+                      Approximately <span class="fewer-count">7</span> cards
+                    </div>
+                    <button
+                      type="button"
+                      class="density-btn"
+                      data-density="fewer"
+                    >
+                      Fewer
+                    </button>
+                  </div>
+                  <div class="density-btn-wrapper">
+                    <div class="density-tooltip">
+                      Approximately
+                      <span class="recommended-count">10</span> cards
+                    </div>
+                    <button
+                      type="button"
+                      class="density-btn active"
+                      data-density="recommended"
+                    >
+                      Recommended
+                    </button>
+                  </div>
+                  <div class="density-btn-wrapper">
+                    <div class="density-tooltip">
+                      Approximately <span class="more-count">13</span> cards
+                    </div>
+                    <button
+                      type="button"
+                      class="density-btn"
+                      data-density="more"
+                    >
+                      More
+                    </button>
+                  </div>
+                </div>
+
+                <div class="custom-count-container">
+                  <label
+                    for="text-custom-count-toggle"
+                    class="custom-count-toggle"
+                  >
+                    <input type="checkbox" id="text-custom-count-toggle" />
+                    <span>Specify custom count</span>
+                  </label>
+
+                  <div class="custom-count-input hidden">
+                    <label for="text-num-pairs">Custom count:</label>
+                    <input
+                      type="number"
+                      id="text-num-pairs"
+                      min="1"
+                      max="50"
+                      value="10"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="actions">
@@ -989,17 +1248,75 @@
             </div>
 
             <div class="form-group">
-              <label for="youtube-num-pairs"
-                >Number of Q&A Pairs to Generate</label
-              >
-              <input
-                type="number"
-                id="youtube-num-pairs"
-                min="1"
-                max="50"
-                value="10"
-                required
-              />
+              <label>Number of Q&A Pairs to Generate</label>
+              <div class="card-count-estimator">
+                <p class="estimate-message">
+                  We'll generate approximately
+                  <span id="youtube-estimated-card-count">10</span> cards based
+                  on your content
+                </p>
+
+                <div class="density-selector">
+                  <div class="density-btn-wrapper">
+                    <div class="density-tooltip">
+                      Approximately <span class="fewer-count">7</span> cards
+                    </div>
+                    <button
+                      type="button"
+                      class="density-btn"
+                      data-density="fewer"
+                    >
+                      Fewer
+                    </button>
+                  </div>
+                  <div class="density-btn-wrapper">
+                    <div class="density-tooltip">
+                      Approximately
+                      <span class="recommended-count">10</span> cards
+                    </div>
+                    <button
+                      type="button"
+                      class="density-btn active"
+                      data-density="recommended"
+                    >
+                      Recommended
+                    </button>
+                  </div>
+                  <div class="density-btn-wrapper">
+                    <div class="density-tooltip">
+                      Approximately <span class="more-count">13</span> cards
+                    </div>
+                    <button
+                      type="button"
+                      class="density-btn"
+                      data-density="more"
+                    >
+                      More
+                    </button>
+                  </div>
+                </div>
+
+                <div class="custom-count-container">
+                  <label
+                    for="youtube-custom-count-toggle"
+                    class="custom-count-toggle"
+                  >
+                    <input type="checkbox" id="youtube-custom-count-toggle" />
+                    <span>Specify custom count</span>
+                  </label>
+
+                  <div class="custom-count-input hidden">
+                    <label for="youtube-num-pairs">Custom count:</label>
+                    <input
+                      type="number"
+                      id="youtube-num-pairs"
+                      min="1"
+                      max="50"
+                      value="10"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="actions">
@@ -1115,6 +1432,10 @@
         const loadingContainer = document.getElementById("loading-container");
         const loadingText = document.getElementById("loading-text");
 
+        // Direct text input elements
+        const directText = document.getElementById("direct-text");
+        const wordCount = document.querySelector(".word-count");
+
         // Carousel elements
         const carouselTrack = document.getElementById("carousel-track");
         const prevBtn = document.getElementById("prev-btn");
@@ -1140,21 +1461,663 @@
         const youtubeBackBtn = document.getElementById("youtube-back-btn");
         const youtubeForm = document.getElementById("youtube-form");
 
+        // Card count estimation handling
+        const customCountToggle = document.getElementById(
+          "custom-count-toggle"
+        );
+        const customCountInput = document.querySelector(".custom-count-input");
+        const numPairsInput = document.getElementById("num-pairs");
+        const estimatedCardCount = document.getElementById(
+          "estimated-card-count"
+        );
+        const densityButtons = document.querySelectorAll(
+          "#pdf-upload .density-btn"
+        );
+
+        let baseEstimatedCount = 10; // Default value
+        let selectedDensity = "recommended"; // Default density
+
+        // Text input card count estimation handling
+        const textCustomCountToggle = document.getElementById(
+          "text-custom-count-toggle"
+        );
+        const textCustomCountInput = document.querySelector(
+          "#text-input .custom-count-input"
+        );
+        const textNumPairsInput = document.getElementById("text-num-pairs");
+        const textEstimatedCardCount = document.getElementById(
+          "text-estimated-card-count"
+        );
+        const textDensityButtons = document.querySelectorAll(
+          "#text-input .density-btn"
+        );
+
+        let textBaseEstimatedCount = 10; // Default value
+        let textSelectedDensity = "recommended"; // Default density
+
+        // YouTube card count estimation handling
+        const youtubeCustomCountToggle = document.getElementById(
+          "youtube-custom-count-toggle"
+        );
+        const youtubeCustomCountInput = document.querySelector(
+          "#youtube-input .custom-count-input"
+        );
+        const youtubeNumPairsInput =
+          document.getElementById("youtube-num-pairs");
+        const youtubeEstimatedCardCount = document.getElementById(
+          "youtube-estimated-card-count"
+        );
+        const youtubeDensityButtons = document.querySelectorAll(
+          "#youtube-input .density-btn"
+        );
+
+        let youtubeBaseEstimatedCount = 10; // Default value
+        let youtubeSelectedDensity = "recommended"; // Default density
+
         let currentIndex = 0;
         let allCards = [];
+        let currentPdfTaskId = null;
 
-        if (youtubeMethod)
+        // File input handling
+        const pdfFileInput = document.getElementById("pdf-file");
+        const pdfFileName = document.getElementById("pdf-file-name");
+
+        // Manual entry QA pairs container and count
+        const qaPairsContainer = document.getElementById("qa-pairs-container");
+        let pairCount = 1;
+
+        // PDF form
+        const pdfForm = document.getElementById("pdf-form");
+
+        // Text form
+        const textForm = document.getElementById("text-form");
+
+        // Toggle custom count input visibility
+        if (customCountToggle) {
+          customCountToggle.addEventListener("change", function () {
+            if (customCountInput) {
+              customCountInput.classList.toggle("hidden", !this.checked);
+            }
+            // Update the form's active count based on selection
+            updateActiveCount();
+          });
+        }
+
+        // Handle density button clicks for PDF form
+        if (densityButtons) {
+          const pdfDensityContainer = document.querySelector(
+            "#pdf-upload .density-selector"
+          );
+
+          // Initial tooltip update
+          updateTooltipCounts(baseEstimatedCount, pdfDensityContainer);
+
+          densityButtons.forEach((btn) => {
+            btn.addEventListener("click", function () {
+              // Remove active class from all buttons
+              densityButtons.forEach((b) => b.classList.remove("active"));
+
+              // Add active class to clicked button
+              this.classList.add("active");
+
+              // Update selected density
+              selectedDensity = this.dataset.density;
+
+              // Update the displayed count with visual feedback
+              updateDisplayedCardCount(
+                baseEstimatedCount,
+                selectedDensity,
+                estimatedCardCount
+              );
+
+              // Update the form value
+              if (numPairsInput) {
+                numPairsInput.value = updateActiveCount();
+              }
+            });
+          });
+        }
+
+        // Update the count based on density selection for PDF form
+        function updateActiveCount() {
+          let finalCount;
+
+          // If custom count is enabled, use that value
+          if (customCountToggle && customCountToggle.checked) {
+            finalCount = parseInt(numPairsInput.value) || 10;
+          } else {
+            // Otherwise calculate based on density
+            switch (selectedDensity) {
+              case "fewer":
+                finalCount = Math.max(5, Math.round(baseEstimatedCount * 0.7));
+                break;
+              case "more":
+                finalCount = Math.min(50, Math.round(baseEstimatedCount * 1.3));
+                break;
+              default: // recommended
+                finalCount = baseEstimatedCount;
+            }
+
+            // Update the custom input to match (for if user enables it later)
+            if (numPairsInput) {
+              numPairsInput.value = finalCount;
+            }
+          }
+
+          return finalCount;
+        }
+
+        // Toggle custom count input visibility for text form
+        if (textCustomCountToggle) {
+          textCustomCountToggle.addEventListener("change", function () {
+            if (textCustomCountInput) {
+              textCustomCountInput.classList.toggle("hidden", !this.checked);
+            }
+            // Update the form's active count based on selection
+            updateTextActiveCount();
+          });
+        }
+
+        // Handle density button clicks for text form
+        if (textDensityButtons) {
+          const textDensityContainer = document.querySelector(
+            "#text-input .density-selector"
+          );
+
+          // Initial tooltip update
+          updateTooltipCounts(textBaseEstimatedCount, textDensityContainer);
+
+          textDensityButtons.forEach((btn) => {
+            btn.addEventListener("click", function () {
+              // Remove active class from all buttons
+              textDensityButtons.forEach((b) => b.classList.remove("active"));
+
+              // Add active class to clicked button
+              this.classList.add("active");
+
+              // Update selected density
+              textSelectedDensity = this.dataset.density;
+
+              // Update the displayed count with visual feedback
+              updateDisplayedCardCount(
+                textBaseEstimatedCount,
+                textSelectedDensity,
+                textEstimatedCardCount
+              );
+
+              // Update the form value
+              if (textNumPairsInput) {
+                textNumPairsInput.value = updateTextActiveCount();
+              }
+            });
+          });
+        }
+
+        // Update the count based on density selection for text form
+        function updateTextActiveCount() {
+          let finalCount;
+
+          // If custom count is enabled, use that value
+          if (textCustomCountToggle && textCustomCountToggle.checked) {
+            finalCount = parseInt(textNumPairsInput.value) || 10;
+          } else {
+            // Otherwise calculate based on density
+            switch (textSelectedDensity) {
+              case "fewer":
+                finalCount = Math.max(
+                  5,
+                  Math.round(textBaseEstimatedCount * 0.7)
+                );
+                break;
+              case "more":
+                finalCount = Math.min(
+                  50,
+                  Math.round(textBaseEstimatedCount * 1.3)
+                );
+                break;
+              default: // recommended
+                finalCount = textBaseEstimatedCount;
+            }
+
+            // Update the custom input to match (for if user enables it later)
+            if (textNumPairsInput) {
+              textNumPairsInput.value = finalCount;
+            }
+          }
+
+          return finalCount;
+        }
+
+        // Toggle custom count input visibility for YouTube form
+        if (youtubeCustomCountToggle) {
+          youtubeCustomCountToggle.addEventListener("change", function () {
+            if (youtubeCustomCountInput) {
+              youtubeCustomCountInput.classList.toggle("hidden", !this.checked);
+            }
+            // Update the form's active count based on selection
+            updateYoutubeActiveCount();
+          });
+        }
+
+        // Handle density button clicks for YouTube form
+        if (youtubeDensityButtons) {
+          const youtubeDensityContainer = document.querySelector(
+            "#youtube-input .density-selector"
+          );
+
+          // Initial tooltip update
+          updateTooltipCounts(
+            youtubeBaseEstimatedCount,
+            youtubeDensityContainer
+          );
+
+          youtubeDensityButtons.forEach((btn) => {
+            btn.addEventListener("click", function () {
+              // Remove active class from all buttons
+              youtubeDensityButtons.forEach((b) =>
+                b.classList.remove("active")
+              );
+
+              // Add active class to clicked button
+              this.classList.add("active");
+
+              // Update selected density
+              youtubeSelectedDensity = this.dataset.density;
+
+              // Update the displayed count with visual feedback
+              updateDisplayedCardCount(
+                youtubeBaseEstimatedCount,
+                youtubeSelectedDensity,
+                youtubeEstimatedCardCount
+              );
+
+              // Update the form value
+              if (youtubeNumPairsInput) {
+                youtubeNumPairsInput.value = updateYoutubeActiveCount();
+              }
+            });
+          });
+        }
+        // Update the count based on density selection for YouTube form
+        function updateYoutubeActiveCount() {
+          let finalCount;
+
+          // If custom count is enabled, use that value
+          if (youtubeCustomCountToggle && youtubeCustomCountToggle.checked) {
+            finalCount = parseInt(youtubeNumPairsInput.value) || 10;
+          } else {
+            // Otherwise calculate based on density
+            switch (youtubeSelectedDensity) {
+              case "fewer":
+                finalCount = Math.max(
+                  5,
+                  Math.round(youtubeBaseEstimatedCount * 0.7)
+                );
+                break;
+              case "more":
+                finalCount = Math.min(
+                  50,
+                  Math.round(youtubeBaseEstimatedCount * 1.3)
+                );
+                break;
+              default: // recommended
+                finalCount = youtubeBaseEstimatedCount;
+            }
+
+            // Update the custom input to match (for if user enables it later)
+            if (youtubeNumPairsInput) {
+              youtubeNumPairsInput.value = finalCount;
+            }
+          }
+
+          return finalCount;
+        }
+
+        // Word counter for direct text input
+        if (directText && wordCount) {
+          directText.addEventListener("input", () => {
+            const count = directText.value.length;
+            wordCount.textContent = `${count} characters`;
+            wordCount.style.color = count < 100 ? "#dc3545" : "#666";
+
+            // Update estimated card count based on text length
+            if (count > 100) {
+              // Rough estimate: 1 card per 150 words, ~6 chars per word
+              const wordEstimate = Math.round(count / 6);
+              textBaseEstimatedCount = Math.max(
+                5,
+                Math.round(wordEstimate / 150)
+              );
+              // Round to nearest 5
+              textBaseEstimatedCount =
+                Math.round(textBaseEstimatedCount / 5) * 5;
+              textBaseEstimatedCount = Math.min(textBaseEstimatedCount, 50);
+
+              if (textEstimatedCardCount) {
+                textEstimatedCardCount.textContent = textBaseEstimatedCount;
+                textEstimatedCardCount.classList.add("count-updated");
+                setTimeout(
+                  () =>
+                    textEstimatedCardCount.classList.remove("count-updated"),
+                  600
+                );
+              }
+
+              // Update tooltip counts
+              const textDensityContainer = document.querySelector(
+                "#text-input .density-selector"
+              );
+              updateTooltipCounts(textBaseEstimatedCount, textDensityContainer);
+
+              // Update the displayed count based on density
+              updateTextActiveCount();
+            }
+          });
+        }
+
+        // Method selection events
+        if (youtubeMethod) {
           youtubeMethod.addEventListener("click", () => showPage(youtubeInput));
-        if (youtubeBackBtn)
+        }
+
+        if (youtubeBackBtn) {
           youtubeBackBtn.addEventListener("click", () =>
             showPage(methodSelection)
           );
+        }
+
+        const pdfMethod = document.getElementById("pdf-method");
+        const textMethod = document.getElementById("text-method");
+        const manualMethod = document.getElementById("manual-method");
+
+        if (pdfMethod) {
+          pdfMethod.addEventListener("click", () => showPage(pdfUpload));
+        }
+
+        if (textMethod) {
+          textMethod.addEventListener("click", () => showPage(textInput));
+        }
+
+        if (manualMethod) {
+          manualMethod.addEventListener("click", () => showPage(manualEntry));
+        }
+
+        // Back buttons
+        const pdfBackBtn = document.getElementById("pdf-back-btn");
+        const textBackBtn = document.getElementById("text-back-btn");
+        const manualBackBtn = document.getElementById("manual-back-btn");
+        const reviewBackBtn = document.getElementById("review-back-btn");
+        const startOverBtn = document.getElementById("start-over-btn");
+
+        if (pdfBackBtn) {
+          pdfBackBtn.addEventListener("click", () => showPage(methodSelection));
+        }
+
+        if (textBackBtn) {
+          textBackBtn.addEventListener("click", () =>
+            showPage(methodSelection)
+          );
+        }
+
+        if (manualBackBtn) {
+          manualBackBtn.addEventListener("click", () =>
+            showPage(methodSelection)
+          );
+        }
+
+        if (reviewBackBtn) {
+          reviewBackBtn.addEventListener("click", () => {
+            const lastMethod = carouselTrack.getAttribute("data-source");
+            if (lastMethod === "text") showPage(textInput);
+            else if (lastMethod === "pdf") showPage(pdfUpload);
+            else showPage(methodSelection);
+          });
+        }
+
+        if (startOverBtn) {
+          startOverBtn.addEventListener("click", () =>
+            showPage(methodSelection)
+          );
+        }
+
+        // File input handling
+        if (pdfFileInput && pdfFileName) {
+          pdfFileInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (file) {
+              const fileSizeMB = file.size / (1024 * 1024);
+              if (fileSizeMB > 20) {
+                pdfFileName.innerHTML = `<span style="color: #dc3545;">${
+                  file.name
+                } (${fileSizeMB.toFixed(1)} MB) - File is too large!</span>`;
+                alert(
+                  "This PDF file is too large (over 20MB). Please upload a smaller file or use the direct text input option."
+                );
+              } else if (fileSizeMB > 10) {
+                pdfFileName.innerHTML = `<span style="color: #ffc107;">${
+                  file.name
+                } (${fileSizeMB.toFixed(
+                  1
+                )} MB) - Large file, processing may take longer</span>`;
+              } else {
+                pdfFileName.innerHTML = `${file.name} (${fileSizeMB.toFixed(
+                  1
+                )} MB)`;
+              }
+
+              // Estimate card count based on file size
+              // Rough estimate: 1 page per 100KB, 2.5 cards per page
+              const estimatedPages = Math.max(
+                1,
+                Math.round((fileSizeMB * 1024) / 100)
+              );
+              baseEstimatedCount = Math.min(
+                50,
+                Math.max(5, Math.round(estimatedPages * 2.5))
+              );
+              // Round to nearest 5
+              baseEstimatedCount = Math.round(baseEstimatedCount / 5) * 5;
+
+              if (estimatedCardCount) {
+                estimatedCardCount.textContent = baseEstimatedCount;
+                estimatedCardCount.classList.add("count-updated");
+                setTimeout(
+                  () => estimatedCardCount.classList.remove("count-updated"),
+                  600
+                );
+              }
+
+              // Update tooltip counts
+              const pdfDensityContainer = document.querySelector(
+                "#pdf-upload .density-selector"
+              );
+              updateTooltipCounts(baseEstimatedCount, pdfDensityContainer);
+
+              // Update the displayed count based on current density
+              updateActiveCount();
+            } else {
+              pdfFileName.textContent = "";
+            }
+          });
+        }
+
+        // Form submissions
+        if (pdfForm) {
+          pdfForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const file = pdfFileInput.files[0];
+            if (!file) {
+              alert("Please select a PDF file");
+              return;
+            }
+
+            // Get the final count based on UI state
+            const finalCount = updateActiveCount();
+
+            try {
+              loadingContainer.classList.add("show");
+              loadingText.textContent = "Analyzing your PDF content...";
+              const formData = new FormData();
+              formData.append("file", file);
+              formData.append("num_pairs", finalCount);
+
+              const response = await fetch(
+                `${API_BASE_URL}/upload/pdf?num_pairs=${finalCount}`,
+                {
+                  method: "POST",
+                  body: formData,
+                }
+              );
+
+              if (!response.ok)
+                throw new Error(`HTTP error! status: ${response.status}`);
+              const data = await response.json();
+
+              // If we got an estimated count from the server, update our UI
+              if (data.estimated_count && estimatedCardCount) {
+                baseEstimatedCount = data.estimated_count;
+                estimatedCardCount.textContent = baseEstimatedCount;
+
+                // Also update the displayed count based on density
+                updateActiveCount();
+              }
+
+              currentPdfTaskId = data.task_id;
+              pollPdfStatus(currentPdfTaskId);
+            } catch (error) {
+              console.error("Error:", error);
+              loadingContainer.classList.remove("show");
+              alert(`Error: ${error.message}`);
+            }
+          });
+        }
+
+        if (textForm) {
+          textForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const text = directText.value.trim();
+
+            // Get the final count based on UI state
+            const finalCount = updateTextActiveCount();
+
+            if (!text) {
+              alert("Please enter some text");
+              return;
+            }
+            if (text.length < 100) {
+              alert(
+                "The text is too short. Please provide more content to generate meaningful questions (at least 100 characters)."
+              );
+              return;
+            }
+
+            try {
+              loadingContainer.classList.add("show");
+              loadingText.textContent = "Analyzing your text content...";
+              const response = await fetch(`${API_BASE_URL}/process/text`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text, num_pairs: parseInt(finalCount) }),
+              });
+
+              if (!response.ok)
+                throw new Error(`HTTP error! status: ${response.status}`);
+              const data = await response.json();
+
+              // If we got an estimated count from the server, update our UI
+              if (data.estimated_count && textEstimatedCardCount) {
+                textBaseEstimatedCount = data.estimated_count;
+                textEstimatedCardCount.textContent = textBaseEstimatedCount;
+
+                // Also update the displayed count based on density
+                updateTextActiveCount();
+              }
+
+              currentPdfTaskId = data.task_id;
+              pollPdfStatus(currentPdfTaskId, "text");
+            } catch (error) {
+              console.error("Error:", error);
+              loadingContainer.classList.remove("show");
+              alert(`Error: ${error.message}`);
+            }
+          });
+        }
+
+        // For YouTube URL input
+        const youtubeUrlInput = document.getElementById("youtube-url");
+        if (youtubeUrlInput) {
+          youtubeUrlInput.addEventListener(
+            "input",
+            debounce(function () {
+              const url = this.value.trim();
+              if (
+                url &&
+                /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/.test(url)
+              ) {
+                // Valid YouTube URL - make a rough estimate
+                // Try to extract video ID and estimate length
+                try {
+                  const videoId =
+                    url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})(?:&|$)/)?.[1] ||
+                    url.match(
+                      /(?:youtu\.be\/)([0-9A-Za-z_-]{11})(?:\?|$)/
+                    )?.[1];
+
+                  if (videoId) {
+                    // Default to 10 minute video (10 cards)
+                    youtubeBaseEstimatedCount = 10;
+
+                    if (youtubeEstimatedCardCount) {
+                      youtubeEstimatedCardCount.textContent =
+                        youtubeBaseEstimatedCount;
+                      youtubeEstimatedCardCount.classList.add("count-updated");
+                      setTimeout(
+                        () =>
+                          youtubeEstimatedCardCount.classList.remove(
+                            "count-updated"
+                          ),
+                        600
+                      );
+                    }
+
+                    // Update tooltip counts
+                    const youtubeDensityContainer = document.querySelector(
+                      "#youtube-input .density-selector"
+                    );
+                    updateTooltipCounts(
+                      youtubeBaseEstimatedCount,
+                      youtubeDensityContainer
+                    );
+
+                    // Update the displayed count based on current density
+                    updateYoutubeActiveCount();
+                  }
+                } catch (e) {
+                  console.error("Error parsing YouTube URL", e);
+                }
+              }
+            }, 500)
+          ); // Debounce to avoid too many updates
+        }
+
+        // Debounce function to limit how often the handler runs
+        function debounce(func, wait) {
+          let timeout;
+          return function () {
+            const context = this,
+              args = arguments;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(context, args), wait);
+          };
+        }
 
         if (youtubeForm) {
           youtubeForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             const url = document.getElementById("youtube-url").value.trim();
-            const numPairs = document.getElementById("youtube-num-pairs").value;
+
+            // Get the final count based on UI state
+            const finalCount = updateYoutubeActiveCount();
 
             if (!url) {
               alert("Please enter a YouTube video URL");
@@ -1175,11 +2138,23 @@
               const response = await fetch(`${API_BASE_URL}/process/youtube`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url, num_pairs: parseInt(numPairs) }),
+                body: JSON.stringify({ url, num_pairs: parseInt(finalCount) }),
               });
+
               if (!response.ok)
                 throw new Error(`HTTP error! status: ${response.status}`);
               const data = await response.json();
+
+              // If we got an estimated count from the server, update our UI
+              if (data.estimated_count && youtubeEstimatedCardCount) {
+                youtubeBaseEstimatedCount = data.estimated_count;
+                youtubeEstimatedCardCount.textContent =
+                  youtubeBaseEstimatedCount;
+
+                // Also update the displayed count based on density
+                updateYoutubeActiveCount();
+              }
+
               pollPdfStatus(data.task_id, "youtube");
             } catch (error) {
               console.error("Error:", error);
@@ -1189,6 +2164,202 @@
           });
         }
 
+        if (manualForm) {
+          manualForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const title = document.getElementById("deck-title").value;
+            const qaPairs = [];
+            document.querySelectorAll(".question-input").forEach((input, i) => {
+              const question = input.value.trim();
+              const answer = document
+                .querySelectorAll(".answer-input")
+                [i].value.trim();
+              if (question && answer) qaPairs.push({ question, answer });
+            });
+            if (qaPairs.length === 0) {
+              alert("Please add at least one question-answer pair");
+              return;
+            }
+            createDeckFromQAPairs(qaPairs, title);
+          });
+        }
+
+        // Add new QA pair in manual entry
+        const addPairBtn = document.getElementById("add-pair");
+        if (addPairBtn) {
+          addPairBtn.addEventListener("click", () => {
+            pairCount++;
+            const newPair = document.createElement("div");
+            newPair.className = "qa-pair";
+            newPair.innerHTML = `
+        <div class="qa-pair-header">
+          <div class="qa-pair-num">Card #${pairCount}</div>
+          <button type="button" class="remove-pair" title="Remove this card">✕</button>
+        </div>
+        <div class="form-group">
+          <label for="question-${pairCount - 1}">Question</label>
+          <input type="text" id="question-${
+            pairCount - 1
+          }" class="question-input" required placeholder="Enter your question">
+        </div>
+        <div class="form-group">
+          <label for="answer-${pairCount - 1}">Answer</label>
+          <textarea id="answer-${
+            pairCount - 1
+          }" class="answer-input" required placeholder="Enter your answer" rows="3"></textarea>
+        </div>
+      `;
+            qaPairsContainer.appendChild(newPair);
+            newPair
+              .querySelector(".remove-pair")
+              .addEventListener("click", function () {
+                if (document.querySelectorAll(".qa-pair").length > 1) {
+                  newPair.remove();
+                  pairCount--;
+                  updateManualPairNumbers();
+                } else {
+                  alert("You need at least one question-answer pair");
+                }
+              });
+          });
+        }
+
+        // Add remove button to first QA pair in manual entry if missing
+        const firstPair = qaPairsContainer
+          ? qaPairsContainer.querySelector(".qa-pair")
+          : null;
+        if (firstPair && !firstPair.querySelector(".remove-pair")) {
+          const header = firstPair.querySelector(".qa-pair-header");
+          if (header) {
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.className = "remove-pair";
+            removeBtn.title = "Remove this pair";
+            removeBtn.textContent = "✕";
+            header.appendChild(removeBtn);
+            removeBtn.addEventListener("click", function () {
+              if (document.querySelectorAll(".qa-pair").length > 1) {
+                firstPair.remove();
+                pairCount--;
+                updateManualPairNumbers();
+              } else {
+                alert("You need at least one question-answer pair");
+              }
+            });
+          }
+        }
+
+        // Toggle view events
+        if (carouselViewBtn && gridViewBtn) {
+          carouselViewBtn.addEventListener("click", function () {
+            carouselViewBtn.classList.add("active");
+            gridViewBtn.classList.remove("active");
+            carouselContainer.classList.remove("hidden");
+            gridContainer.classList.add("hidden");
+            if (gridAddNewCardBtn) gridAddNewCardBtn.classList.add("hidden");
+            if (addNewCardBtn) addNewCardBtn.classList.remove("hidden");
+          });
+
+          gridViewBtn.addEventListener("click", function () {
+            gridViewBtn.classList.add("active");
+            carouselViewBtn.classList.remove("active");
+            gridContainer.classList.remove("hidden");
+            carouselContainer.classList.add("hidden");
+            if (addNewCardBtn) addNewCardBtn.classList.add("hidden");
+            if (gridAddNewCardBtn) gridAddNewCardBtn.classList.remove("hidden");
+            populateGridView();
+          });
+        }
+
+        if (gridAddNewCardBtn) {
+          gridAddNewCardBtn.addEventListener("click", function () {
+            const currentCards = JSON.parse(
+              carouselTrack.getAttribute("data-cards")
+            );
+            const source = carouselTrack.getAttribute("data-source");
+            const taskId = carouselTrack.getAttribute("data-task-id");
+            currentCards.push({ question: "", answer: "" });
+            allCards = currentCards;
+            carouselTrack.setAttribute(
+              "data-cards",
+              JSON.stringify(currentCards)
+            );
+            populateGridView();
+            gridContainer.scrollTop = gridContainer.scrollHeight;
+          });
+        }
+
+        // Create deck from QA review page
+        const createDeckFromQABtn = document.getElementById(
+          "create-deck-from-qa"
+        );
+        if (createDeckFromQABtn) {
+          createDeckFromQABtn.addEventListener("click", function () {
+            const cardsData = JSON.parse(
+              document
+                .getElementById("carousel-track")
+                .getAttribute("data-cards") || "[]"
+            );
+            if (cardsData.length === 0) {
+              alert("Error: No flashcards found");
+              return;
+            }
+            const invalidCards = cardsData.filter(
+              (card) => !card.question.trim() || !card.answer.trim()
+            );
+            if (invalidCards.length > 0) {
+              alert(
+                `Error: ${invalidCards.length} cards have empty questions or answers. Please complete all cards.`
+              );
+              return;
+            }
+            const deckTitle = prompt(
+              "Enter a title for your Anki deck:",
+              "My Flashcards"
+            );
+            if (!deckTitle) return;
+            createDeckFromQAPairs(cardsData, deckTitle);
+          });
+        }
+
+        // Download deck event
+        const downloadDeckBtn = document.getElementById("download-deck");
+        if (downloadDeckBtn) {
+          downloadDeckBtn.addEventListener("click", function () {
+            const taskId = this.getAttribute("data-task-id");
+            if (taskId)
+              window.location.href = `${API_BASE_URL}/download/${taskId}`;
+            else alert("Error: Task ID not found.");
+          });
+        }
+
+        // Keyboard navigation for carousel view
+        document.addEventListener("keydown", function (e) {
+          if (
+            qaReview.classList.contains("active") &&
+            gridContainer.classList.contains("hidden")
+          ) {
+            if (e.key === "ArrowLeft" && currentIndex > 0) {
+              currentIndex--;
+              updateCarouselDisplay();
+            } else if (
+              e.key === "ArrowRight" &&
+              currentIndex < allCards.length - 1
+            ) {
+              currentIndex++;
+              updateCarouselDisplay();
+            }
+          }
+        });
+
+        // Helper functions
+        function showPage(page) {
+          document
+            .querySelectorAll(".page")
+            .forEach((p) => p.classList.remove("active"));
+          page.classList.add("active");
+        }
+
         // Poll for PDF/text processing status
         async function pollPdfStatus(taskId, source = "pdf") {
           try {
@@ -1196,6 +2367,25 @@
             if (!response.ok)
               throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
+
+            // If we get an estimated count from the server, update our UI
+            if (data.estimated_count) {
+              if (source === "pdf" && estimatedCardCount) {
+                baseEstimatedCount = data.estimated_count;
+                estimatedCardCount.textContent = baseEstimatedCount;
+                updateActiveCount();
+              } else if (source === "text" && textEstimatedCardCount) {
+                textBaseEstimatedCount = data.estimated_count;
+                textEstimatedCardCount.textContent = textBaseEstimatedCount;
+                updateTextActiveCount();
+              } else if (source === "youtube" && youtubeEstimatedCardCount) {
+                youtubeBaseEstimatedCount = data.estimated_count;
+                youtubeEstimatedCardCount.textContent =
+                  youtubeBaseEstimatedCount;
+                updateYoutubeActiveCount();
+              }
+            }
+
             if (data.message) loadingText.textContent = data.message;
             if (data.status === "completed") {
               fetchQAPairs(taskId, source);
@@ -1229,59 +2419,6 @@
           }
         }
 
-        function showPage(page) {
-          document
-            .querySelectorAll(".page")
-            .forEach((p) => p.classList.remove("active"));
-          page.classList.add("active");
-        }
-
-        // Method selection events
-        const pdfMethod = document.getElementById("pdf-method");
-        const textMethod = document.getElementById("text-method");
-        const manualMethod = document.getElementById("manual-method");
-
-        if (pdfMethod)
-          pdfMethod.addEventListener("click", () => showPage(pdfUpload));
-        if (textMethod)
-          textMethod.addEventListener("click", () => showPage(textInput));
-        if (manualMethod)
-          manualMethod.addEventListener("click", () => showPage(manualEntry));
-
-        // Back buttons
-        const pdfBackBtn = document.getElementById("pdf-back-btn");
-        const textBackBtn = document.getElementById("text-back-btn");
-        const manualBackBtn = document.getElementById("manual-back-btn");
-        const reviewBackBtn = document.getElementById("review-back-btn");
-        const startOverBtn = document.getElementById("start-over-btn");
-
-        if (pdfBackBtn)
-          pdfBackBtn.addEventListener("click", () => showPage(methodSelection));
-        if (textBackBtn)
-          textBackBtn.addEventListener("click", () =>
-            showPage(methodSelection)
-          );
-        if (manualBackBtn)
-          manualBackBtn.addEventListener("click", () =>
-            showPage(methodSelection)
-          );
-        if (reviewBackBtn) {
-          reviewBackBtn.addEventListener("click", () => {
-            const lastMethod = carouselTrack.getAttribute("data-source");
-            if (lastMethod === "text") showPage(textInput);
-            else if (lastMethod === "pdf") showPage(pdfUpload);
-            else showPage(methodSelection);
-          });
-        }
-        if (startOverBtn)
-          startOverBtn.addEventListener("click", () =>
-            showPage(methodSelection)
-          );
-
-        // Manual entry QA pairs container and count
-        const qaPairsContainer = document.getElementById("qa-pairs-container");
-        let pairCount = 1;
-
         // Set up the flashcard carousel
         function setupCarousel(cards, source, taskId) {
           allCards = cards;
@@ -1297,23 +2434,23 @@
             cardElement.className = "qa-pair";
             cardElement.dataset.index = index;
             cardElement.innerHTML = `
-              <div class="qa-pair-header">
-                <div class="qa-pair-num">Card #${index + 1}</div>
-                <button type="button" class="remove-pair" title="Remove this card">✕</button>
-              </div>
-              <div class="form-group">
-                <label for="carousel-question-${index}">Question:</label>
-                <textarea id="carousel-question-${index}" class="edit-question" rows="3">${
+        <div class="qa-pair-header">
+          <div class="qa-pair-num">Card #${index + 1}</div>
+          <button type="button" class="remove-pair" title="Remove this card">✕</button>
+        </div>
+        <div class="form-group">
+          <label for="carousel-question-${index}">Question:</label>
+          <textarea id="carousel-question-${index}" class="edit-question" rows="3">${
               card.question
             }</textarea>
-              </div>
-              <div class="form-group">
-                <label for="carousel-answer-${index}">Answer:</label>
-                <textarea id="carousel-answer-${index}" class="edit-answer" rows="4">${
+        </div>
+        <div class="form-group">
+          <label for="carousel-answer-${index}">Answer:</label>
+          <textarea id="carousel-answer-${index}" class="edit-answer" rows="4">${
               card.answer
             }</textarea>
-              </div>
-            `;
+        </div>
+      `;
             carouselTrack.appendChild(cardElement);
             cardElement
               .querySelector(".remove-pair")
@@ -1380,6 +2517,48 @@
           nextBtn.disabled = currentIndex === allCards.length - 1;
         }
 
+        function updateDisplayedCardCount(baseCount, density, displayElement) {
+          if (!displayElement) return;
+
+          let finalCount;
+          switch (density) {
+            case "fewer":
+              finalCount = Math.max(5, Math.round(baseCount * 0.7));
+              break;
+            case "more":
+              finalCount = Math.min(50, Math.round(baseCount * 1.3));
+              break;
+            default: // recommended
+              finalCount = baseCount;
+          }
+
+          displayElement.textContent = finalCount;
+
+          // Add visual feedback when count changes
+          displayElement.classList.add("count-updated");
+          setTimeout(
+            () => displayElement.classList.remove("count-updated"),
+            600
+          );
+
+          return finalCount;
+        }
+
+        function updateTooltipCounts(baseCount, container) {
+          if (!container) return;
+
+          const fewerCount = Math.max(5, Math.round(baseCount * 0.7));
+          const moreCount = Math.min(50, Math.round(baseCount * 1.3));
+
+          const fewerElem = container.querySelector(".fewer-count");
+          const recommendedElem = container.querySelector(".recommended-count");
+          const moreElem = container.querySelector(".more-count");
+
+          if (fewerElem) fewerElem.textContent = fewerCount;
+          if (recommendedElem) recommendedElem.textContent = baseCount;
+          if (moreElem) moreElem.textContent = moreCount;
+        }
+
         function setupCarouselControls() {
           prevBtn.onclick = () => {
             if (currentIndex > 0) {
@@ -1431,23 +2610,23 @@
             gridItem.className = "grid-item";
             gridItem.dataset.index = index;
             gridItem.innerHTML = `
-              <div class="grid-item-header">
-                <div class="qa-pair-num">Card #${index + 1}</div>
-                <button type="button" class="remove-pair" title="Remove this card">✕</button>
-              </div>
-              <div class="form-group">
-                <label for="grid-question-${index}">Question:</label>
-                <textarea id="grid-question-${index}" class="edit-question" rows="2">${
+        <div class="grid-item-header">
+          <div class="qa-pair-num">Card #${index + 1}</div>
+          <button type="button" class="remove-pair" title="Remove this card">✕</button>
+        </div>
+        <div class="form-group">
+          <label for="grid-question-${index}">Question:</label>
+          <textarea id="grid-question-${index}" class="edit-question" rows="2">${
               card.question
             }</textarea>
-              </div>
-              <div class="form-group">
-                <label for="grid-answer-${index}">Answer:</label>
-                <textarea id="grid-answer-${index}" class="edit-answer" rows="3">${
+        </div>
+        <div class="form-group">
+          <label for="grid-answer-${index}">Answer:</label>
+          <textarea id="grid-answer-${index}" class="edit-answer" rows="3">${
               card.answer
             }</textarea>
-              </div>
-            `;
+        </div>
+      `;
             gridContainer.appendChild(gridItem);
             const questionTextarea = gridItem.querySelector(".edit-question");
             const answerTextarea = gridItem.querySelector(".edit-answer");
@@ -1520,203 +2699,6 @@
           }
         }
 
-        // Toggle view events
-        if (carouselViewBtn && gridViewBtn) {
-          carouselViewBtn.addEventListener("click", function () {
-            carouselViewBtn.classList.add("active");
-            gridViewBtn.classList.remove("active");
-            carouselContainer.classList.remove("hidden");
-            gridContainer.classList.add("hidden");
-            if (gridAddNewCardBtn) gridAddNewCardBtn.classList.add("hidden");
-            if (addNewCardBtn) addNewCardBtn.classList.remove("hidden");
-          });
-
-          gridViewBtn.addEventListener("click", function () {
-            gridViewBtn.classList.add("active");
-            carouselViewBtn.classList.remove("active");
-            gridContainer.classList.remove("hidden");
-            carouselContainer.classList.add("hidden");
-            if (addNewCardBtn) addNewCardBtn.classList.add("hidden");
-            if (gridAddNewCardBtn) gridAddNewCardBtn.classList.remove("hidden");
-            populateGridView();
-          });
-        }
-
-        if (gridAddNewCardBtn) {
-          gridAddNewCardBtn.addEventListener("click", function () {
-            const currentCards = JSON.parse(
-              carouselTrack.getAttribute("data-cards")
-            );
-            const source = carouselTrack.getAttribute("data-source");
-            const taskId = carouselTrack.getAttribute("data-task-id");
-            currentCards.push({ question: "", answer: "" });
-            allCards = currentCards;
-            carouselTrack.setAttribute(
-              "data-cards",
-              JSON.stringify(currentCards)
-            );
-            populateGridView();
-            gridContainer.scrollTop = gridContainer.scrollHeight;
-          });
-        }
-
-        // File input handling
-        const pdfFileInput = document.getElementById("pdf-file");
-        const pdfFileName = document.getElementById("pdf-file-name");
-
-        if (pdfFileInput && pdfFileName) {
-          pdfFileInput.addEventListener("change", (e) => {
-            const file = e.target.files[0];
-            if (file) {
-              const fileSizeMB = file.size / (1024 * 1024);
-              if (fileSizeMB > 20) {
-                pdfFileName.innerHTML = `<span style="color: #dc3545;">${
-                  file.name
-                } (${fileSizeMB.toFixed(1)} MB) - File is too large!</span>`;
-                alert(
-                  "This PDF file is too large (over 20MB). Please upload a smaller file or use the direct text input option."
-                );
-              } else if (fileSizeMB > 10) {
-                pdfFileName.innerHTML = `<span style="color: #ffc107;">${
-                  file.name
-                } (${fileSizeMB.toFixed(
-                  1
-                )} MB) - Large file, processing may take longer</span>`;
-              } else {
-                pdfFileName.innerHTML = `${file.name} (${fileSizeMB.toFixed(
-                  1
-                )} MB)`;
-              }
-            } else {
-              pdfFileName.textContent = "";
-            }
-          });
-        }
-
-        // Word counter for direct text input
-        const directText = document.getElementById("direct-text");
-        const wordCount = document.querySelector(".word-count");
-        if (directText && wordCount) {
-          directText.addEventListener("input", () => {
-            const count = directText.value.length;
-            wordCount.textContent = `${count} characters`;
-            wordCount.style.color = count < 100 ? "#dc3545" : "#666";
-          });
-        }
-
-        // PDF form submission
-        const pdfForm = document.getElementById("pdf-form");
-        let currentPdfTaskId = null;
-        if (pdfForm) {
-          pdfForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const file = pdfFileInput.files[0];
-            const numPairs = document.getElementById("num-pairs").value;
-            if (!file) {
-              alert("Please select a PDF file");
-              return;
-            }
-            if (file.size / (1024 * 1024) > 20) {
-              alert(
-                "This PDF file is too large (over 20MB). Please upload a smaller file or use the direct text input option."
-              );
-              return;
-            }
-            try {
-              loadingContainer.classList.add("show");
-              loadingText.textContent = "Analyzing your PDF content...";
-              const formData = new FormData();
-              formData.append("file", file);
-              formData.append("num_pairs", numPairs);
-              const response = await fetch(
-                `${API_BASE_URL}/upload/pdf?num_pairs=${numPairs}`,
-                {
-                  method: "POST",
-                  body: formData,
-                }
-              );
-              if (!response.ok)
-                throw new Error(`HTTP error! status: ${response.status}`);
-              const data = await response.json();
-              currentPdfTaskId = data.task_id;
-              pollPdfStatus(currentPdfTaskId);
-            } catch (error) {
-              console.error("Error:", error);
-              loadingContainer.classList.remove("show");
-              alert(`Error: ${error.message}`);
-            }
-          });
-        }
-
-        // Direct text form submission
-        const textForm = document.getElementById("text-form");
-        if (textForm) {
-          textForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const text = directText.value.trim();
-            const numPairs = document.getElementById("text-num-pairs").value;
-            if (!text) {
-              alert("Please enter some text");
-              return;
-            }
-            if (text.length < 100) {
-              alert(
-                "The text is too short. Please provide more content to generate meaningful questions (at least 100 characters)."
-              );
-              return;
-            }
-            try {
-              loadingContainer.classList.add("show");
-              loadingText.textContent = "Analyzing your text content...";
-              const response = await fetch(`${API_BASE_URL}/process/text`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text, num_pairs: parseInt(numPairs) }),
-              });
-              if (!response.ok)
-                throw new Error(`HTTP error! status: ${response.status}`);
-              const data = await response.json();
-              currentPdfTaskId = data.task_id;
-              pollPdfStatus(currentPdfTaskId, "text");
-            } catch (error) {
-              console.error("Error:", error);
-              loadingContainer.classList.remove("show");
-              alert(`Error: ${error.message}`);
-            }
-          });
-        }
-
-        // Update manual entry pair numbers
-        function updateManualPairNumbers() {
-          document
-            .querySelectorAll("#qa-pairs-container .qa-pair")
-            .forEach((pair, index) => {
-              pair.querySelector(".qa-pair-num").textContent = `Card #${
-                index + 1
-              }`;
-            });
-        }
-
-        if (manualForm) {
-          manualForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const title = document.getElementById("deck-title").value;
-            const qaPairs = [];
-            document.querySelectorAll(".question-input").forEach((input, i) => {
-              const question = input.value.trim();
-              const answer = document
-                .querySelectorAll(".answer-input")
-                [i].value.trim();
-              if (question && answer) qaPairs.push({ question, answer });
-            });
-            if (qaPairs.length === 0) {
-              alert("Please add at least one question-answer pair");
-              return;
-            }
-            createDeckFromQAPairs(qaPairs, title);
-          });
-        }
-
         // Poll for deck creation status
         async function pollDeckStatus(taskId) {
           try {
@@ -1751,17 +2733,6 @@
           }
         }
 
-        // Download deck event
-        const downloadDeckBtn = document.getElementById("download-deck");
-        if (downloadDeckBtn) {
-          downloadDeckBtn.addEventListener("click", function () {
-            const taskId = this.getAttribute("data-task-id");
-            if (taskId)
-              window.location.href = `${API_BASE_URL}/download/${taskId}`;
-            else alert("Error: Task ID not found.");
-          });
-        }
-
         // Show notification
         function showNotification(message) {
           const notification = document.getElementById("notification");
@@ -1770,121 +2741,15 @@
           setTimeout(() => notification.classList.remove("show"), 3000);
         }
 
-        // Add remove button to first QA pair in manual entry if missing
-        const firstPair = qaPairsContainer
-          ? qaPairsContainer.querySelector(".qa-pair")
-          : null;
-        if (firstPair && !firstPair.querySelector(".remove-pair")) {
-          const header = firstPair.querySelector(".qa-pair-header");
-          if (header) {
-            const removeBtn = document.createElement("button");
-            removeBtn.type = "button";
-            removeBtn.className = "remove-pair";
-            removeBtn.title = "Remove this pair";
-            removeBtn.textContent = "✕";
-            header.appendChild(removeBtn);
-            removeBtn.addEventListener("click", function () {
-              if (document.querySelectorAll(".qa-pair").length > 1) {
-                firstPair.remove();
-                pairCount--;
-                updateManualPairNumbers();
-              } else {
-                alert("You need at least one question-answer pair");
-              }
+        // Update manual entry pair numbers
+        function updateManualPairNumbers() {
+          document
+            .querySelectorAll("#qa-pairs-container .qa-pair")
+            .forEach((pair, index) => {
+              pair.querySelector(".qa-pair-num").textContent = `Card #${
+                index + 1
+              }`;
             });
-          }
-        }
-
-        // Keyboard navigation for carousel view
-        document.addEventListener("keydown", function (e) {
-          if (
-            qaReview.classList.contains("active") &&
-            gridContainer.classList.contains("hidden")
-          ) {
-            if (e.key === "ArrowLeft" && currentIndex > 0) {
-              currentIndex--;
-              updateCarouselDisplay();
-            } else if (
-              e.key === "ArrowRight" &&
-              currentIndex < allCards.length - 1
-            ) {
-              currentIndex++;
-              updateCarouselDisplay();
-            }
-          }
-        });
-
-        // Add new QA pair in manual entry
-        const addPairBtn = document.getElementById("add-pair");
-        if (addPairBtn) {
-          addPairBtn.addEventListener("click", () => {
-            pairCount++;
-            const newPair = document.createElement("div");
-            newPair.className = "qa-pair";
-            newPair.innerHTML = `
-              <div class="qa-pair-header">
-                <div class="qa-pair-num">Card #${pairCount}</div>
-                <button type="button" class="remove-pair" title="Remove this card">✕</button>
-              </div>
-              <div class="form-group">
-                <label for="question-${pairCount - 1}">Question</label>
-                <input type="text" id="question-${
-                  pairCount - 1
-                }" class="question-input" required placeholder="Enter your question">
-              </div>
-              <div class="form-group">
-                <label for="answer-${pairCount - 1}">Answer</label>
-                <textarea id="answer-${
-                  pairCount - 1
-                }" class="answer-input" required placeholder="Enter your answer" rows="3"></textarea>
-              </div>
-            `;
-            qaPairsContainer.appendChild(newPair);
-            newPair
-              .querySelector(".remove-pair")
-              .addEventListener("click", function () {
-                if (document.querySelectorAll(".qa-pair").length > 1) {
-                  newPair.remove();
-                  pairCount--;
-                  updateManualPairNumbers();
-                } else {
-                  alert("You need at least one question-answer pair");
-                }
-              });
-          });
-        }
-
-        // Create deck from QA review page
-        const createDeckFromQABtn = document.getElementById(
-          "create-deck-from-qa"
-        );
-        if (createDeckFromQABtn) {
-          createDeckFromQABtn.addEventListener("click", function () {
-            const cardsData = JSON.parse(
-              document
-                .getElementById("carousel-track")
-                .getAttribute("data-cards") || "[]"
-            );
-            if (cardsData.length === 0) {
-              alert("Error: No flashcards found");
-              return;
-            }
-            const invalidCards = cardsData.filter(
-              (card) => !card.question.trim() || !card.answer.trim()
-            );
-            if (invalidCards.length > 0) {
-              alert(
-                `Error: ${invalidCards.length} cards have empty questions or answers. Please complete all cards.`
-              );
-              return;
-            }
-            const deckTitle = prompt(
-              "Enter a title for your Anki deck:",
-              "My Flashcards"
-            );
-            if (!deckTitle) return;
-            createDeckFromQAPairs(cardsData, deckTitle);
-          });
         }
       });
     </script>
