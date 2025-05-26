@@ -18,6 +18,8 @@ from youtube_transcript_api import YouTubeTranscriptApi
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pathlib import Path
+from youtube_transcript_api.proxies import WebshareProxyConfig
+import asyncio
 
 load_dotenv()
 
@@ -77,6 +79,23 @@ openai.base_url = "https://api.deepseek.com"
 if not DEEPSEEK_API_KEY:
     print("Warning: DEEPSEEK_API_KEY environment variable is not set")
 
+WEBSHARE_USERNAME = os.getenv('WEBSHARE_USERNAME')
+WEBSHARE_PASSWORD = os.getenv('WEBSHARE_PASSWORD')
+
+# Validate credentials are present
+if not WEBSHARE_USERNAME or not WEBSHARE_PASSWORD:
+    print("⚠️  WARNING: Webshare credentials not found!")
+    print("📝 Set these environment variables:")
+    print("   - WEBSHARE_USERNAME")
+    print("   - WEBSHARE_PASSWORD")
+    print("")
+    print("🖥️  For local development:")
+    print("   export WEBSHARE_USERNAME='your_username'")
+    print("   export WEBSHARE_PASSWORD='your_password'")
+    print("")
+    print("☁️  For Render deployment:")
+    print("   Add them in the Environment section of your service settings")
+
 # Models
 class ProcessingStatus(BaseModel):
     task_id: str
@@ -96,6 +115,146 @@ class DeckRequest(BaseModel):
 class ProcessTextRequest(BaseModel):
     text: str
     num_pairs: int = 0  # 0 means use the estimated count
+
+class WebshareFreeTierManager:
+    """
+    Manage Webshare free tier proxies with built-in rate limiting.
+    """
+    
+    def __init__(self, username: str, password: str):
+        self.username = username
+        self.password = password
+        self.proxy_config = None
+        self.requests_made = 0
+        self.bandwidth_used_mb = 0
+        self.monthly_limit_mb = 1024  # 1GB = 1024MB
+        self.last_request_time = 0
+        self.min_delay_seconds = 2  # Minimum delay between requests
+    
+    def setup_proxy_config(self):
+        """Set up the Webshare proxy configuration."""
+        if not self.username or not self.password or self.username == 'your_webshare_username_here':
+            raise ValueError("Please set your Webshare username and password!")
+        
+        self.proxy_config = WebshareProxyConfig(
+            proxy_username=self.username,
+            proxy_password=self.password
+        )
+        
+        print(f"✅ Webshare proxy configured for user: {self.username}")
+        return self.proxy_config
+    
+    async def wait_for_rate_limit(self):
+        """Ensure we don't make requests too quickly."""
+        now = time.time()
+        time_since_last = now - self.last_request_time
+        
+        if time_since_last < self.min_delay_seconds:
+            wait_time = self.min_delay_seconds - time_since_last
+            print(f"⏱️  Rate limiting: waiting {wait_time:.1f} seconds...")
+            await asyncio.sleep(wait_time)
+        
+        self.last_request_time = time.time()
+    
+    def check_bandwidth_limit(self, estimated_request_size_mb: float = 0.5):
+        """Check if we're approaching bandwidth limits."""
+        if self.bandwidth_used_mb + estimated_request_size_mb > self.monthly_limit_mb:
+            raise Exception(f"Approaching bandwidth limit! Used: {self.bandwidth_used_mb}MB / {self.monthly_limit_mb}MB")
+        
+        # Warn at 80% usage
+        usage_percent = (self.bandwidth_used_mb / self.monthly_limit_mb) * 100
+        if usage_percent > 80:
+            print(f"⚠️  Warning: {usage_percent:.1f}% of monthly bandwidth used")
+    
+    def record_successful_request(self, estimated_size_mb: float = 0.5):
+        """Record a successful request for tracking."""
+        self.requests_made += 1
+        self.bandwidth_used_mb += estimated_size_mb
+        
+        print(f"📊 Request #{self.requests_made} completed. Bandwidth used: {self.bandwidth_used_mb:.1f}MB / {self.monthly_limit_mb}MB")
+    
+    def get_usage_stats(self):
+        """Get current usage statistics."""
+        return {
+            'requests_made': self.requests_made,
+            'bandwidth_used_mb': self.bandwidth_used_mb,
+            'bandwidth_remaining_mb': self.monthly_limit_mb - self.bandwidth_used_mb,
+            'estimated_requests_remaining': int((self.monthly_limit_mb - self.bandwidth_used_mb) / 0.5)
+        }
+
+webshare_manager = WebshareFreeTierManager(WEBSHARE_USERNAME, WEBSHARE_PASSWORD)
+
+
+async def fetch_transcript_with_webshare_free(video_id: str, max_retries: int = 3) -> str:
+    """
+    Fetch YouTube transcript using Webshare free tier proxies.
+    """
+    
+    # Set up proxy config if not already done
+    if not webshare_manager.proxy_config:
+        webshare_manager.setup_proxy_config()
+    
+    for attempt in range(max_retries):
+        try:
+            # Check bandwidth limits
+            webshare_manager.check_bandwidth_limit()
+            
+            # Rate limiting
+            await webshare_manager.wait_for_rate_limit()
+            
+            print(f"🔄 Attempt {attempt + 1}: Fetching transcript for {video_id} via Webshare proxy")
+            
+            # Create YouTube API instance with Webshare proxy
+            ytt_api = YouTubeTranscriptApi(proxy_config=webshare_manager.proxy_config)
+            
+            # Fetch transcript
+            transcript_list = ytt_api.get_transcript(video_id)
+            transcript_text = ""
+            for item in transcript_list:
+                transcript_text += item['text'] + " "
+            
+            # Record successful request
+            webshare_manager.record_successful_request()
+            
+            print(f"✅ Success! Fetched {len(transcript_text)} characters via Webshare proxy")
+            return transcript_text
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            
+            print(f"❌ Attempt {attempt + 1} failed: {str(e)}")
+            
+            # Check if it's a rate limiting error
+            if "429" in error_msg or "too many requests" in error_msg:
+                if attempt < max_retries - 1:
+                    # Exponential backoff
+                    wait_time = (2 ** attempt) + random.uniform(1, 3)
+                    print(f"⏳ Rate limited. Waiting {wait_time:.1f} seconds before retry...")
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    raise Exception("Rate limit exceeded after all retries with Webshare proxy")
+            
+            # Check if it's a credential/proxy error
+            elif any(keyword in error_msg for keyword in ['auth', 'credential', 'proxy', 'connection']):
+                raise Exception(f"Webshare proxy error: {str(e)}. Check your username/password.")
+            
+            # Other errors (video not available, etc.)
+            elif "not available" in error_msg or "unavailable" in error_msg:
+                raise Exception(f"Video unavailable: {str(e)}")
+            
+            # Generic error - try again
+            elif attempt < max_retries - 1:
+                wait_time = 2 + random.uniform(0.5, 1.5)
+                print(f"⏳ Retrying in {wait_time:.1f} seconds...")
+                await asyncio.sleep(wait_time)
+                continue
+            else:
+                raise Exception(f"Failed after all attempts: {str(e)}")
+    
+    raise Exception("Failed to fetch transcript after all attempts")
+
+
 
 # In-memory storage for task status
 tasks_status = {}
@@ -793,18 +952,16 @@ class YoutubeRequest(BaseModel):
     num_pairs: int = 0  # 0 means use the estimated count
 
 @app.post("/process/youtube", response_model=ProcessingStatus)
-async def process_youtube(request: YoutubeRequest, background_tasks: BackgroundTasks):
+async def process_youtube_with_webshare_integration(request: YoutubeRequest, background_tasks: BackgroundTasks):
+    """
+    Updated YouTube processing endpoint with Webshare integration.
+    """
     # Generate a unique task ID
     task_id = f"task_{random.randint(10000, 99999)}"
     
-    # Extract video ID and get duration if possible
-    try:
-        video_id = extract_youtube_id(request.url)
-        # We'll use a default duration since getting actual duration requires additional API calls
-        estimated_duration_minutes = 10  # Default assumption: 10 minute video
-        estimated_count = estimate_card_count("youtube", estimated_duration_minutes * 60)
-    except:
-        estimated_count = 10  # Fallback
+    # Estimate count
+    estimated_duration_minutes = 10
+    estimated_count = estimate_card_count("youtube", estimated_duration_minutes * 60)
     
     # Use provided count if specified, otherwise use estimate
     num_pairs = request.num_pairs if request.num_pairs > 0 else estimated_count
@@ -814,24 +971,28 @@ async def process_youtube(request: YoutubeRequest, background_tasks: BackgroundT
     tasks_status[task_id] = {
         "status": "processing",
         "progress": 0.0,
-        "message": "Starting YouTube transcript processing",
+        "message": "Starting YouTube transcript processing with Webshare proxy",
         "qa_pairs": None,
         "timestamp": time.time(),
         "estimated_count": estimated_count
     }
     
-    # Process the transcript in the background
-    background_tasks.add_task(process_youtube_task, task_id, request.url, num_pairs)
+    # Process with Webshare in the background
+    background_tasks.add_task(process_youtube_task_with_webshare, task_id, request.url, num_pairs)
     
     return ProcessingStatus(
         task_id=task_id, 
         status="processing", 
         progress=0.0,
+        message="Processing with Webshare free tier proxy",
         estimated_count=estimated_count
     )
 
-async def process_youtube_task(task_id: str, url: str, num_pairs: int):
-    """Process YouTube transcript in the background."""
+async def process_youtube_task_with_webshare(task_id: str, url: str, num_pairs: int):
+    """
+    Enhanced YouTube processing with Webshare free tier proxies.
+    This replaces your existing process_youtube_task function.
+    """
     try:
         # Validate num_pairs
         try:
@@ -865,15 +1026,12 @@ async def process_youtube_task(task_id: str, url: str, num_pairs: int):
         # Update status
         tasks_status[task_id].update({
             "progress": 0.3,
-            "message": "Fetching transcript from YouTube"
+            "message": "Fetching transcript via Webshare proxy (free tier)"
         })
         
-        # Fetch transcript
+        # Fetch transcript with Webshare free tier
         try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-            transcript_text = ""
-            for item in transcript_list:
-                transcript_text += item['text'] + " "
+            transcript_text = await fetch_transcript_with_webshare_free(video_id)
             
             logger.info(f"Successfully fetched transcript: {len(transcript_text)} characters")
             
@@ -886,33 +1044,51 @@ async def process_youtube_task(task_id: str, url: str, num_pairs: int):
                 return
                 
         except Exception as e:
-            logger.error(f"Error fetching YouTube transcript: {str(e)}")
-            tasks_status[task_id].update({
-                "status": "failed",
-                "message": f"Failed to fetch transcript: {str(e)}"
-            })
+            logger.error(f"Error fetching YouTube transcript with Webshare: {str(e)}")
+            
+            # Provide helpful error messages
+            error_msg = str(e)
+            if "username" in error_msg.lower() or "password" in error_msg.lower():
+                tasks_status[task_id].update({
+                    "status": "failed",
+                    "message": "Webshare credentials error. Please check your username and password in the code."
+                })
+            elif "bandwidth" in error_msg.lower():
+                tasks_status[task_id].update({
+                    "status": "failed", 
+                    "message": "Monthly bandwidth limit reached. Try again next month or upgrade to paid plan."
+                })
+            else:
+                tasks_status[task_id].update({
+                    "status": "failed",
+                    "message": f"Failed to fetch transcript: {str(e)}"
+                })
             return
         
-        # Update status
+        # Update status for QA generation
         tasks_status[task_id].update({
             "progress": 0.5,
-            "message": f"Processing transcript (generating {num_pairs} Q&A pairs)"
+            "message": f"Generating {num_pairs} Q&A pairs"
         })
         
         # Generate QA pairs from transcript
         qa_pairs = generate_qa_pairs(transcript_text, num_pairs)
         logger.info(f"Successfully generated {len(qa_pairs)} Q&A pairs")
         
+        # Get usage stats for user info
+        usage_stats = webshare_manager.get_usage_stats()
+        
         # Update status
         tasks_status[task_id].update({
             "progress": 1.0,
             "status": "completed",
             "message": f"Processing complete ({len(qa_pairs)} Q&A pairs generated)",
-            "qa_pairs": qa_pairs
+            "qa_pairs": qa_pairs,
+            "webshare_usage": usage_stats
         })
         
     except Exception as e:
-        logger.error(f"Error in process_youtube_task: {str(e)}", exc_info=True)
+        logger.error(f"Error in Webshare YouTube processing: {str(e)}", exc_info=True)
         tasks_status[task_id].update({
             "status": "failed",
             "message": f"Error processing YouTube transcript: {str(e)}"
