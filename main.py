@@ -374,13 +374,8 @@ class WorkingYouTubeExtractor:
 working_extractor = None
 
 def initialize_working_extractor():
-    global working_extractor
-    
-    if not WEBSHARE_USERNAME or not WEBSHARE_PASSWORD:
-        raise Exception("WebShare credentials not configured")
-    
-    working_extractor = WorkingYouTubeExtractor(WEBSHARE_USERNAME, WEBSHARE_PASSWORD)
-    logger.info(f"✅ Working YouTube extractor initialized for user: {WEBSHARE_USERNAME}")
+    """This function is kept for compatibility but now uses Decodo"""
+    initialize_decodo_extractor()
 
 async def fetch_transcript_that_actually_works(video_id: str) -> str:
     global working_extractor
@@ -1118,6 +1113,486 @@ async def get_youtube_video_info(video_id: str):
             "status": "error",
             "video_id": video_id,
             "error": str(e)
+        }
+    
+
+class DecodoYouTubeExtractor:
+    def __init__(self, decodo_username: str, decodo_password: str):
+        self.decodo_username = decodo_username
+        self.decodo_password = decodo_password
+        
+        # Decodo's single endpoint for all residential proxies
+        self.proxy_endpoint = "gate.decodo.com:7000"
+        
+        # Realistic browser headers
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            'Sec-Ch-Ua-Mobile': '?0',
+            'Sec-Ch-Ua-Platform': '"Windows"',
+        }
+    
+    def get_proxy_config(self, country_code: str = "US", session_id: str = None) -> Dict[str, str]:
+        """Get Decodo proxy configuration with optional targeting"""
+        
+        username_parts = [f"user-{self.decodo_username}"]
+        
+        if country_code:
+            username_parts.append(f"country-{country_code.lower()}")
+        
+        if session_id:
+            username_parts.append(f"session-{session_id}")
+            username_parts.append("sessionduration-30")
+        
+        proxy_username = "-".join(username_parts)
+        proxy_url = f"http://{proxy_username}:{self.decodo_password}@{self.proxy_endpoint}"
+        
+        return {
+            'http': proxy_url,
+            'https': proxy_url
+        }
+    
+    def test_proxy_connection(self, country_code: str = "US") -> bool:
+        """Test Decodo proxy connection"""
+        try:
+            proxies = self.get_proxy_config(country_code)
+            
+            response = requests.get(
+                'https://ip.decodo.com/json',
+                proxies=proxies,
+                timeout=15,
+                headers=self.headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"✅ Decodo proxy working. IP: {data.get('ip', 'unknown')}, Country: {data.get('country', 'unknown')}")
+                return True
+            else:
+                logger.error(f"❌ Proxy test failed with status: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Proxy test error: {str(e)}")
+            return False
+    
+    async def extract_transcript(self, video_id: str, max_retries: int = 3) -> str:
+        """Extract YouTube transcript using Decodo residential proxies"""
+        logger.info(f"🎯 Starting Decodo extraction for video: {video_id}")
+        
+        if not self.test_proxy_connection():
+            raise Exception("Decodo proxy connection failed. Check your credentials.")
+        
+        # Try youtube-transcript-api first
+        try:
+            from youtube_transcript_api import YouTubeTranscriptApi
+            from youtube_transcript_api.proxies import GenericProxyConfig
+            
+            logger.info("🔧 Using youtube-transcript-api with Decodo proxy...")
+            
+            session_id = f"yt_{video_id}_{int(time.time())}"
+            proxies = self.get_proxy_config("US", session_id)
+            
+            proxy_config = GenericProxyConfig(
+                http_url=proxies['http'],
+                https_url=proxies['https']
+            )
+            
+            api = YouTubeTranscriptApi(proxy_config=proxy_config)
+            transcript_list = api.list_transcripts(video_id)
+            
+            transcript = None
+            
+            try:
+                transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB', 'a.en'])
+            except:
+                available = list(transcript_list)
+                if available:
+                    transcript = available[0]
+                    if transcript.language_code not in ['en', 'en-US', 'en-GB']:
+                        transcript = transcript.translate('en')
+            
+            if not transcript:
+                raise Exception("No transcripts available")
+            
+            transcript_data = transcript.fetch()
+            text_parts = []
+            
+            for entry in transcript_data:
+                text = entry['text'].strip()
+                if text and not any(noise in text.lower() for noise in [
+                    '[music]', '[applause]', '[laughter]', '♪', '♫'
+                ]):
+                    text_parts.append(text)
+            
+            if not text_parts:
+                raise Exception("No usable transcript content found")
+            
+            full_transcript = ' '.join(text_parts)
+            full_transcript = re.sub(r'\[.*?\]', '', full_transcript)
+            full_transcript = re.sub(r'♪.*?♪', '', full_transcript)
+            full_transcript = re.sub(r'\s+', ' ', full_transcript).strip()
+            
+            if len(full_transcript) < 100:
+                raise Exception("Transcript too short after cleaning")
+            
+            logger.info(f"✅ Success with youtube-transcript-api + Decodo: {len(full_transcript)} characters")
+            return full_transcript
+            
+        except ImportError:
+            logger.warning("youtube-transcript-api not installed, falling back to custom method")
+        except Exception as e:
+            logger.warning(f"youtube-transcript-api failed: {str(e)}, trying custom extraction")
+        
+        # Fallback to custom extraction
+        countries_to_try = ["US", "GB", "CA", "AU"]
+        
+        for country in countries_to_try:
+            logger.info(f"🌍 Trying extraction from {country}")
+            
+            for attempt in range(max_retries):
+                try:
+                    logger.info(f"🔄 Attempt {attempt + 1}/{max_retries} for {country}")
+                    
+                    session_id = f"custom_{video_id}_{country}_{attempt}_{int(time.time())}"
+                    proxies = self.get_proxy_config(country, session_id)
+                    
+                    if attempt > 0:
+                        delay = random.uniform(2, 4) + attempt
+                        await asyncio.sleep(delay)
+                    
+                    # Try timedtext API
+                    transcript = await self._extract_via_timedtext(video_id, proxies)
+                    if transcript and len(transcript) > 100:
+                        logger.info(f"✅ Success with timedtext from {country}: {len(transcript)} characters")
+                        return transcript
+                    
+                    # Try watch page
+                    transcript = await self._extract_via_watch_page(video_id, proxies)
+                    if transcript and len(transcript) > 100:
+                        logger.info(f"✅ Success with watch page from {country}: {len(transcript)} characters")
+                        return transcript
+                    
+                except Exception as e:
+                    logger.warning(f"⚠️ Attempt {attempt + 1} in {country} failed: {str(e)}")
+        
+        raise Exception(f"All extraction methods failed for video {video_id}")
+    
+    async def _extract_via_timedtext(self, video_id: str, proxies: Dict[str, str]) -> Optional[str]:
+        """Extract via direct timedtext API"""
+        urls = [
+            f"https://www.youtube.com/api/timedtext?v={video_id}&lang=en&fmt=json3",
+            f"https://www.youtube.com/api/timedtext?v={video_id}&lang=en-US&fmt=json3",
+            f"https://www.youtube.com/api/timedtext?v={video_id}&lang=a.en&fmt=json3",
+            f"https://www.youtube.com/api/timedtext?v={video_id}&lang=en&fmt=srv3",
+        ]
+        
+        for url in urls:
+            try:
+                response = requests.get(
+                    url,
+                    headers=self.headers,
+                    proxies=proxies,
+                    timeout=20
+                )
+                
+                if response.status_code == 200 and response.content:
+                    transcript = self._parse_transcript(response.text)
+                    if transcript and len(transcript) > 100:
+                        return transcript
+                        
+            except Exception as e:
+                logger.debug(f"Failed URL {url}: {e}")
+                continue
+        
+        return None
+    
+    async def _extract_via_watch_page(self, video_id: str, proxies: Dict[str, str]) -> Optional[str]:
+        """Extract from YouTube watch page"""
+        try:
+            watch_url = f"https://www.youtube.com/watch?v={video_id}"
+            
+            response = requests.get(
+                watch_url,
+                headers=self.headers,
+                proxies=proxies,
+                timeout=30
+            )
+            
+            if response.status_code != 200:
+                return None
+            
+            html_content = response.text
+            
+            # Find caption URLs
+            patterns = [
+                r'"captionTracks":\s*(\[[^\]]+\])',
+                r'\"baseUrl\":\"(https://www\.youtube\.com/api/timedtext[^\"]*?)\"',
+            ]
+            
+            caption_urls = []
+            for pattern in patterns:
+                matches = re.findall(pattern, html_content)
+                for match in matches:
+                    if match.startswith('['):
+                        try:
+                            tracks = json.loads(match)
+                            for track in tracks:
+                                if 'baseUrl' in track:
+                                    url = track['baseUrl'].replace('\\u0026', '&').replace('\\/', '/')
+                                    caption_urls.append(url)
+                        except:
+                            continue
+                    elif 'timedtext' in match:
+                        url = match.replace('\\u0026', '&').replace('\\/', '/')
+                        caption_urls.append(url)
+            
+            # Try each caption URL
+            for url in caption_urls[:3]:
+                try:
+                    if not url.startswith('http'):
+                        continue
+                    
+                    if '&fmt=' not in url:
+                        url += '&fmt=json3'
+                    
+                    caption_response = requests.get(
+                        url,
+                        headers=self.headers,
+                        proxies=proxies,
+                        timeout=15
+                    )
+                    
+                    if caption_response.status_code == 200:
+                        transcript = self._parse_transcript(caption_response.text)
+                        if transcript and len(transcript) > 100:
+                            return transcript
+                            
+                except Exception as e:
+                    logger.debug(f"Caption URL failed: {e}")
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            logger.warning(f"Watch page extraction failed: {e}")
+            return None
+    
+    def _parse_transcript(self, content: str) -> Optional[str]:
+        """Parse transcript from various formats"""
+        try:
+            if not content or len(content.strip()) < 10:
+                return None
+            
+            # Try JSON3 format
+            if content.strip().startswith('{'):
+                try:
+                    data = json.loads(content)
+                    if 'events' in data:
+                        text_parts = []
+                        for event in data['events']:
+                            if 'segs' in event:
+                                for seg in event['segs']:
+                                    if 'utf8' in seg:
+                                        text = seg['utf8'].strip()
+                                        if text and text not in ['[Music]', '[Applause]', '[Laughter]']:
+                                            text_parts.append(text)
+                        
+                        if text_parts:
+                            full_transcript = ' '.join(text_parts)
+                            full_transcript = re.sub(r'\[.*?\]', '', full_transcript)
+                            full_transcript = re.sub(r'\s+', ' ', full_transcript).strip()
+                            return full_transcript if len(full_transcript) > 50 else None
+                            
+                except json.JSONDecodeError:
+                    pass
+            
+            # Try XML format
+            if content.strip().startswith('<'):
+                try:
+                    root = ET.fromstring(content)
+                    text_parts = []
+                    
+                    for elem in root.iter():
+                        if elem.tag in ['text', 'p'] and elem.text:
+                            text = elem.text.strip()
+                            text = re.sub(r'\[.*?\]', '', text)
+                            text = re.sub(r'\s+', ' ', text)
+                            if text and len(text) > 2:
+                                text_parts.append(text)
+                    
+                    if text_parts:
+                        full_transcript = ' '.join(text_parts)
+                        full_transcript = re.sub(r'\s+', ' ', full_transcript).strip()
+                        return full_transcript if len(full_transcript) > 50 else None
+                        
+                except ET.ParseError:
+                    pass
+            
+            return None
+            
+        except Exception as e:
+            logger.warning(f"Transcript parsing failed: {e}")
+            return None
+
+
+# Update your global variables
+decodo_extractor = None
+
+def initialize_decodo_extractor():
+    global decodo_extractor
+    
+    if not DECODO_USERNAME or not DECODO_PASSWORD:
+        raise Exception("Decodo credentials not configured. Set DECODO_USERNAME and DECODO_PASSWORD environment variables")
+    
+    decodo_extractor = DecodoYouTubeExtractor(DECODO_USERNAME, DECODO_PASSWORD)
+    logger.info(f"✅ Decodo YouTube extractor initialized for user: {DECODO_USERNAME}")
+
+# Replace your fetch_transcript_that_actually_works function with this:
+async def fetch_transcript_that_actually_works(video_id: str) -> str:
+    global decodo_extractor
+    
+    if not decodo_extractor:
+        initialize_decodo_extractor()
+    
+    logger.info(f"🎬 Starting Decodo extraction for video: {video_id}")
+    
+    try:
+        transcript = await decodo_extractor.extract_transcript(video_id)
+        
+        if transcript and len(transcript.strip()) > 100:
+            logger.info(f"✅ Successfully extracted {len(transcript)} characters with Decodo")
+            return transcript
+        else:
+            raise Exception("Extracted transcript was too short or empty")
+            
+    except Exception as e:
+        logger.error(f"❌ Decodo extractor failed: {str(e)}")
+        raise Exception(f"Could not extract transcript with Decodo: {str(e)}")
+
+
+@app.get("/debug/decodo-test")
+async def test_decodo_configuration():
+    """Test Decodo proxy configuration"""
+    try:
+        if not DECODO_USERNAME or not DECODO_PASSWORD:
+            return {
+                "status": "error",
+                "message": "Decodo credentials not configured",
+                "fix": "Set DECODO_USERNAME and DECODO_PASSWORD environment variables"
+            }
+        
+        # Test proxy connection
+        test_extractor = DecodoYouTubeExtractor(DECODO_USERNAME, DECODO_PASSWORD)
+        
+        results = {}
+        
+        # Test different countries
+        countries_to_test = ["US", "GB", "CA"]
+        
+        for country in countries_to_test:
+            try:
+                # Test basic connectivity
+                proxies = test_extractor.get_proxy_config(country)
+                
+                response = requests.get(
+                    'https://ip.decodo.com/json',
+                    proxies=proxies,
+                    timeout=15,
+                    headers=test_extractor.headers
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # Test YouTube accessibility
+                    yt_response = requests.get(
+                        'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                        proxies=proxies,
+                        timeout=15,
+                        headers=test_extractor.headers
+                    )
+                    
+                    results[country] = {
+                        "status": "success",
+                        "proxy_ip": data.get('ip', 'unknown'),
+                        "proxy_country": data.get('country', 'unknown'),
+                        "youtube_accessible": yt_response.status_code == 200,
+                        "youtube_status": yt_response.status_code
+                    }
+                else:
+                    results[country] = {
+                        "status": "failed",
+                        "error": f"HTTP {response.status_code}"
+                    }
+                    
+            except Exception as e:
+                results[country] = {
+                    "status": "error",
+                    "error": str(e)
+                }
+        
+        working_countries = [k for k, v in results.items() if v.get("status") == "success" and v.get("youtube_accessible")]
+        
+        recommendations = []
+        if working_countries:
+            recommendations.append(f"✅ Working countries: {', '.join(working_countries)}")
+            recommendations.append("✅ Decodo residential proxies are working correctly")
+        else:
+            recommendations.append("❌ No working proxy connections found")
+            recommendations.append("💡 Check your Decodo dashboard for active plans")
+            recommendations.append("💡 Ensure you have residential proxy credits")
+        
+        return {
+            "status": "diagnostic_complete",
+            "decodo_username": DECODO_USERNAME,
+            "proxy_test_results": results,
+            "recommendations": recommendations,
+            "next_steps": [
+                "If proxies work, test transcript extraction with: /debug/working-extraction/dQw4w9WgXcQ",
+                "Check your Decodo dashboard for usage statistics",
+                "Ensure you have residential proxy credits remaining"
+            ]
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "suggestion": "Check your Decodo credentials and account status"
+        }
+
+@app.get("/debug/decodo-extraction/{video_id}")
+async def test_decodo_extraction(video_id: str):
+    """Test Decodo transcript extraction for a specific video"""
+    try:
+        logger.info(f"🧪 Testing Decodo extraction for: {video_id}")
+        
+        transcript = await fetch_transcript_that_actually_works(video_id)
+        
+        return {
+            "status": "success",
+            "video_id": video_id,
+            "transcript_length": len(transcript),
+            "sample": transcript[:300] + "..." if len(transcript) > 300 else transcript,
+            "method": "decodo_residential_proxies"
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "video_id": video_id,
+            "error": str(e),
+            "method": "decodo_residential_proxies"
         }
 
 if __name__ == "__main__":
