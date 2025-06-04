@@ -957,18 +957,20 @@ class YoutubeRequest(BaseModel):
     num_pairs: int = 0  # 0 means use the estimated count
 
 @app.post("/process/youtube", response_model=ProcessingStatus)
-async def process_youtube_with_enhanced_webshare_integration(request: YoutubeRequest, background_tasks: BackgroundTasks):
+async def process_youtube_with_enhanced_debugging_endpoint(request: YoutubeRequest, background_tasks: BackgroundTasks):
     """
-    Enhanced YouTube processing endpoint with improved extraction methods.
+    Enhanced YouTube processing endpoint with comprehensive debugging.
     """
     # Generate a unique task ID
     task_id = f"task_{random.randint(10000, 99999)}"
+    
+    logger.info(f"🎬 New YouTube processing request: {request.url}")
     
     # Estimate count
     estimated_duration_minutes = 10
     estimated_count = estimate_card_count("youtube", estimated_duration_minutes * 60)
     
-    # Use provided count if specified, otherwise use estimate
+    # Use provided count if specified
     num_pairs = request.num_pairs if request.num_pairs > 0 else estimated_count
     num_pairs = min(50, max(1, num_pairs))
     
@@ -976,20 +978,20 @@ async def process_youtube_with_enhanced_webshare_integration(request: YoutubeReq
     tasks_status[task_id] = {
         "status": "processing",
         "progress": 0.0,
-        "message": "Starting enhanced YouTube transcript processing",
+        "message": "Starting enhanced YouTube transcript processing...",
         "qa_pairs": None,
         "timestamp": time.time(),
         "estimated_count": estimated_count
     }
     
-    # Process with enhanced methods in the background
-    background_tasks.add_task(process_youtube_task_with_enhanced_webshare, task_id, request.url, num_pairs)
+    # Process with enhanced debugging
+    background_tasks.add_task(process_youtube_task_with_enhanced_debugging, task_id, request.url, num_pairs)
     
     return ProcessingStatus(
         task_id=task_id, 
         status="processing", 
         progress=0.0,
-        message="Processing with enhanced extraction methods",
+        message="Processing with enhanced debugging and multiple extraction methods",
         estimated_count=estimated_count
     )
 
@@ -1524,6 +1526,424 @@ async def youtube_health_check():
     except Exception as e:
         return {
             "status": "unhealthy",
+            "error": str(e),
+            "webshare_configured": bool(WEBSHARE_USERNAME and WEBSHARE_PASSWORD)
+        }
+    
+
+@app.get("/debug/webshare")
+async def debug_webshare():
+    """Debug endpoint to test WebShare proxy configuration."""
+    try:
+        if not WEBSHARE_USERNAME or not WEBSHARE_PASSWORD:
+            return {
+                "status": "error",
+                "message": "WebShare credentials not configured",
+                "credentials_set": False
+            }
+        
+        # Test proxy configuration
+        proxy_config = WebshareProxyConfig(
+            proxy_username=WEBSHARE_USERNAME,
+            proxy_password=WEBSHARE_PASSWORD
+        )
+        
+        # Test with a known working video (Rick Roll)
+        test_video_id = "dQw4w9WgXcQ"
+        
+        try:
+            ytt_api = YouTubeTranscriptApi(proxy_config=proxy_config)
+            transcript_list = ytt_api.get_transcript(test_video_id)
+            
+            sample_transcript = " ".join([item['text'] for item in transcript_list[:5]])  # First 5 segments
+            
+            return {
+                "status": "success",
+                "message": "WebShare proxy working correctly",
+                "test_video": test_video_id,
+                "sample_transcript": sample_transcript,
+                "transcript_segments": len(transcript_list),
+                "credentials_set": True
+            }
+            
+        except Exception as e:
+            return {
+                "status": "error", 
+                "message": f"WebShare proxy test failed: {str(e)}",
+                "credentials_set": True,
+                "error_type": type(e).__name__
+            }
+            
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Debug test failed: {str(e)}",
+            "credentials_set": bool(WEBSHARE_USERNAME and WEBSHARE_PASSWORD)
+        }
+
+# Enhanced YouTube transcript extraction with better error handling
+async def fetch_transcript_with_enhanced_debugging(video_id: str, max_retries: int = 3) -> str:
+    """
+    Enhanced transcript fetching with detailed debugging and multiple fallback methods.
+    """
+    
+    logger.info(f"🎯 Starting transcript extraction for video: {video_id}")
+    
+    # Method 1: Try with WebShare proxy (your existing approach)
+    try:
+        logger.info("📡 Method 1: Testing WebShare proxy configuration...")
+        
+        if not WEBSHARE_USERNAME or not WEBSHARE_PASSWORD:
+            raise Exception("WebShare credentials not configured. Please set WEBSHARE_USERNAME and WEBSHARE_PASSWORD environment variables.")
+        
+        proxy_config = WebshareProxyConfig(
+            proxy_username=WEBSHARE_USERNAME,
+            proxy_password=WEBSHARE_PASSWORD
+        )
+        logger.info(f"✅ Proxy config created for user: {WEBSHARE_USERNAME}")
+        
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"🔄 WebShare attempt {attempt + 1}/{max_retries}")
+                
+                # Rate limiting
+                await webshare_manager.wait_for_rate_limit()
+                
+                # Create YouTube API instance with proxy
+                ytt_api = YouTubeTranscriptApi(proxy_config=proxy_config)
+                
+                # Try to get transcript
+                transcript_list = ytt_api.get_transcript(video_id)
+                
+                if transcript_list and len(transcript_list) > 0:
+                    transcript_text = " ".join([item['text'] for item in transcript_list])
+                    
+                    logger.info(f"✅ WebShare success! Extracted {len(transcript_text)} characters")
+                    webshare_manager.record_successful_request()
+                    return transcript_text
+                else:
+                    logger.warning(f"⚠️ Empty transcript returned for {video_id}")
+                
+            except TranscriptsDisabled:
+                logger.error(f"❌ Video {video_id} has transcripts disabled")
+                raise Exception("This video has transcripts disabled by the creator")
+                
+            except VideoUnavailable:
+                logger.error(f"❌ Video {video_id} is unavailable")
+                raise Exception("This video is unavailable or private")
+                
+            except Exception as e:
+                error_msg = str(e).lower()
+                logger.warning(f"⚠️ WebShare attempt {attempt + 1} failed: {str(e)}")
+                
+                if "could not retrieve a transcript" in error_msg:
+                    logger.info("🔍 Transcript retrieval failed, trying alternative methods...")
+                    break  # Try alternative methods
+                elif "429" in error_msg or "rate limit" in error_msg:
+                    if attempt < max_retries - 1:
+                        wait_time = (2 ** attempt) + 1
+                        logger.info(f"⏳ Rate limited, waiting {wait_time} seconds...")
+                        await asyncio.sleep(wait_time)
+                        continue
+                elif "auth" in error_msg or "credential" in error_msg:
+                    raise Exception("WebShare authentication failed. Please check your credentials.")
+                
+                if attempt == max_retries - 1:
+                    logger.error(f"❌ All WebShare attempts failed: {str(e)}")
+                    break
+                    
+    except Exception as e:
+        logger.error(f"❌ WebShare method failed: {str(e)}")
+    
+    # Method 2: Try without proxy (direct connection)
+    try:
+        logger.info("📡 Method 2: Trying direct connection (no proxy)...")
+        
+        for attempt in range(2):  # Fewer attempts for direct method
+            try:
+                ytt_api = YouTubeTranscriptApi()  # No proxy
+                transcript_list = ytt_api.get_transcript(video_id)
+                
+                if transcript_list and len(transcript_list) > 0:
+                    transcript_text = " ".join([item['text'] for item in transcript_list])
+                    logger.info(f"✅ Direct connection success! Extracted {len(transcript_text)} characters")
+                    return transcript_text
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Direct attempt {attempt + 1} failed: {str(e)}")
+                if attempt == 0:
+                    await asyncio.sleep(2)  # Short wait before retry
+                    
+    except Exception as e:
+        logger.error(f"❌ Direct connection method failed: {str(e)}")
+    
+    # Method 3: Try with different language codes
+    try:
+        logger.info("📡 Method 3: Trying with specific language codes...")
+        
+        proxy_config = None
+        if WEBSHARE_USERNAME and WEBSHARE_PASSWORD:
+            proxy_config = WebshareProxyConfig(
+                proxy_username=WEBSHARE_USERNAME,
+                proxy_password=WEBSHARE_PASSWORD
+            )
+        
+        ytt_api = YouTubeTranscriptApi(proxy_config=proxy_config)
+        
+        # Try different language codes
+        language_codes = ['en', 'en-US', 'en-GB', 'a.en', 'en-auto']
+        
+        for lang_code in language_codes:
+            try:
+                logger.info(f"🌐 Trying language code: {lang_code}")
+                transcript_list = ytt_api.get_transcript(video_id, languages=[lang_code])
+                
+                if transcript_list and len(transcript_list) > 0:
+                    transcript_text = " ".join([item['text'] for item in transcript_list])
+                    logger.info(f"✅ Language-specific success with {lang_code}! Extracted {len(transcript_text)} characters")
+                    return transcript_text
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Language {lang_code} failed: {str(e)}")
+                continue
+                
+    except Exception as e:
+        logger.error(f"❌ Language-specific method failed: {str(e)}")
+    
+    # Method 4: List available transcripts and try the first one
+    try:
+        logger.info("📡 Method 4: Listing available transcripts...")
+        
+        proxy_config = None
+        if WEBSHARE_USERNAME and WEBSHARE_PASSWORD:
+            proxy_config = WebshareProxyConfig(
+                proxy_username=WEBSHARE_USERNAME,
+                proxy_password=WEBSHARE_PASSWORD
+            )
+        
+        ytt_api = YouTubeTranscriptApi(proxy_config=proxy_config)
+        
+        # List all available transcripts
+        transcript_list_data = ytt_api.list_transcripts(video_id)
+        available_transcripts = list(transcript_list_data)
+        
+        logger.info(f"📋 Found {len(available_transcripts)} available transcript(s)")
+        
+        for i, transcript in enumerate(available_transcripts):
+            try:
+                logger.info(f"🔍 Trying transcript {i+1}: {transcript.language} (generated: {transcript.is_generated})")
+                
+                transcript_data = transcript.fetch()
+                if transcript_data and len(transcript_data) > 0:
+                    transcript_text = " ".join([item['text'] for item in transcript_data])
+                    logger.info(f"✅ Available transcript success! Extracted {len(transcript_text)} characters")
+                    return transcript_text
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Available transcript {i+1} failed: {str(e)}")
+                continue
+                
+    except Exception as e:
+        logger.error(f"❌ Available transcripts method failed: {str(e)}")
+    
+    # If all methods fail
+    error_msg = f"All transcript extraction methods failed for video {video_id}. The video may not have captions available, or there might be a temporary service issue."
+    logger.error(f"❌ {error_msg}")
+    raise Exception(error_msg)
+
+# Updated YouTube processing function with enhanced debugging
+async def process_youtube_task_with_enhanced_debugging(task_id: str, url: str, num_pairs: int):
+    """
+    Enhanced YouTube processing with comprehensive debugging and error handling.
+    """
+    try:
+        logger.info(f"🎬 Starting YouTube processing for task {task_id}")
+        logger.info(f"📝 URL: {url}")
+        logger.info(f"🎯 Target Q&A pairs: {num_pairs}")
+        
+        # Validate num_pairs
+        num_pairs = max(1, min(50, int(num_pairs)))
+        
+        # Update status
+        tasks_status[task_id].update({
+            "progress": 0.1,
+            "message": "Extracting YouTube video ID..."
+        })
+        
+        # Extract video ID
+        try:
+            video_id = extract_youtube_id(url)
+            logger.info(f"✅ Extracted video ID: {video_id}")
+        except ValueError as e:
+            logger.error(f"❌ Invalid URL: {str(e)}")
+            tasks_status[task_id].update({
+                "status": "failed", 
+                "message": f"Invalid YouTube URL: {str(e)}"
+            })
+            return
+        
+        # Update status
+        tasks_status[task_id].update({
+            "progress": 0.2,
+            "message": "Checking video accessibility..."
+        })
+        
+        # Check WebShare configuration
+        webshare_status = "configured" if (WEBSHARE_USERNAME and WEBSHARE_PASSWORD) else "not configured"
+        logger.info(f"🔧 WebShare proxy status: {webshare_status}")
+        
+        tasks_status[task_id].update({
+            "progress": 0.3,
+            "message": f"Fetching transcript (WebShare: {webshare_status})..."
+        })
+        
+        # Fetch transcript with enhanced debugging
+        try:
+            transcript_text = await fetch_transcript_with_enhanced_debugging(video_id)
+            
+            logger.info(f"✅ Transcript extracted successfully: {len(transcript_text)} characters")
+            
+            # Check transcript length
+            if len(transcript_text.strip()) < 100:
+                tasks_status[task_id].update({
+                    "status": "failed",
+                    "message": "The extracted transcript is too short. This video might not have enough spoken content."
+                })
+                return
+                
+        except Exception as e:
+            logger.error(f"❌ Transcript extraction failed: {str(e)}")
+            
+            # Provide specific error messages
+            error_msg = str(e)
+            if "not configured" in error_msg.lower():
+                tasks_status[task_id].update({
+                    "status": "failed",
+                    "message": "Service configuration error. Please contact support."
+                })
+            elif "disabled" in error_msg.lower():
+                tasks_status[task_id].update({
+                    "status": "failed",
+                    "message": "This video has captions disabled by the creator. Please try a different video."
+                })
+            elif "unavailable" in error_msg.lower():
+                tasks_status[task_id].update({
+                    "status": "failed",
+                    "message": "This video is private or unavailable. Please try a different video."
+                })
+            elif "authentication" in error_msg.lower():
+                tasks_status[task_id].update({
+                    "status": "failed",
+                    "message": "Service temporarily unavailable. Please try again later."
+                })
+            else:
+                tasks_status[task_id].update({
+                    "status": "failed",
+                    "message": f"Could not extract transcript: {str(e)}"
+                })
+            return
+        
+        # Generate Q&A pairs
+        tasks_status[task_id].update({
+            "progress": 0.6,
+            "message": f"Generating {num_pairs} Q&A pairs from transcript..."
+        })
+        
+        logger.info(f"🤖 Generating {num_pairs} Q&A pairs from {len(transcript_text)} characters")
+        qa_pairs = generate_qa_pairs(transcript_text, num_pairs)
+        logger.info(f"✅ Generated {len(qa_pairs)} Q&A pairs")
+        
+        # Get usage stats
+        usage_stats = webshare_manager.get_usage_stats()
+        
+        # Complete successfully
+        tasks_status[task_id].update({
+            "progress": 1.0,
+            "status": "completed",
+            "message": f"Processing complete ({len(qa_pairs)} Q&A pairs generated)",
+            "qa_pairs": qa_pairs,
+            "webshare_usage": usage_stats
+        })
+        
+        logger.info(f"🎉 YouTube processing completed successfully for task {task_id}")
+        
+    except Exception as e:
+        logger.error(f"💥 Unexpected error in YouTube processing: {str(e)}", exc_info=True)
+        tasks_status[task_id].update({
+            "status": "failed",
+            "message": f"Unexpected error: {str(e)}"
+        })
+ 
+ # Additional debug endpoint for testing specific videos
+@app.get("/debug/youtube/{video_id}")
+async def debug_specific_video(video_id: str):
+    """Debug a specific YouTube video to see what transcripts are available."""
+    try:
+        logger.info(f"🔍 Debugging video: {video_id}")
+        
+        results = {
+            "video_id": video_id,
+            "webshare_configured": bool(WEBSHARE_USERNAME and WEBSHARE_PASSWORD),
+            "tests": {}
+        }
+        
+        # Test 1: List available transcripts
+        try:
+            proxy_config = None
+            if WEBSHARE_USERNAME and WEBSHARE_PASSWORD:
+                proxy_config = WebshareProxyConfig(
+                    proxy_username=WEBSHARE_USERNAME,
+                    proxy_password=WEBSHARE_PASSWORD
+                )
+            
+            ytt_api = YouTubeTranscriptApi(proxy_config=proxy_config)
+            transcript_list = ytt_api.list_transcripts(video_id)
+            
+            available = []
+            for transcript in transcript_list:
+                available.append({
+                    "language": transcript.language,
+                    "language_code": transcript.language_code,
+                    "is_generated": transcript.is_generated,
+                    "is_translatable": transcript.is_translatable
+                })
+            
+            results["tests"]["list_transcripts"] = {
+                "status": "success",
+                "available_transcripts": available,
+                "count": len(available)
+            }
+            
+        except Exception as e:
+            results["tests"]["list_transcripts"] = {
+                "status": "error",
+                "error": str(e)
+            }
+        
+        # Test 2: Try to get English transcript
+        try:
+            ytt_api = YouTubeTranscriptApi(proxy_config=proxy_config)
+            transcript = ytt_api.get_transcript(video_id, languages=['en'])
+            
+            sample = " ".join([item['text'] for item in transcript[:3]]) if transcript else ""
+            
+            results["tests"]["get_english_transcript"] = {
+                "status": "success",
+                "segments": len(transcript),
+                "sample": sample
+            }
+            
+        except Exception as e:
+            results["tests"]["get_english_transcript"] = {
+                "status": "error", 
+                "error": str(e)
+            }
+        
+        return results
+        
+    except Exception as e:
+        return {
+            "video_id": video_id,
             "error": str(e),
             "webshare_configured": bool(WEBSHARE_USERNAME and WEBSHARE_PASSWORD)
         }
