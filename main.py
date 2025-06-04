@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import tempfile
 import traceback
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -20,6 +20,11 @@ from fastapi.responses import HTMLResponse
 from pathlib import Path
 from youtube_transcript_api.proxies import WebshareProxyConfig
 import asyncio
+import requests
+import json
+import re
+from urllib.parse import parse_qs, urlparse
+from xml.etree import ElementTree as ET
 
 load_dotenv()
 
@@ -952,9 +957,9 @@ class YoutubeRequest(BaseModel):
     num_pairs: int = 0  # 0 means use the estimated count
 
 @app.post("/process/youtube", response_model=ProcessingStatus)
-async def process_youtube_with_webshare_integration(request: YoutubeRequest, background_tasks: BackgroundTasks):
+async def process_youtube_with_enhanced_webshare_integration(request: YoutubeRequest, background_tasks: BackgroundTasks):
     """
-    Updated YouTube processing endpoint with Webshare integration.
+    Enhanced YouTube processing endpoint with improved extraction methods.
     """
     # Generate a unique task ID
     task_id = f"task_{random.randint(10000, 99999)}"
@@ -971,20 +976,20 @@ async def process_youtube_with_webshare_integration(request: YoutubeRequest, bac
     tasks_status[task_id] = {
         "status": "processing",
         "progress": 0.0,
-        "message": "Starting YouTube transcript processing with Webshare proxy",
+        "message": "Starting enhanced YouTube transcript processing",
         "qa_pairs": None,
         "timestamp": time.time(),
         "estimated_count": estimated_count
     }
     
-    # Process with Webshare in the background
-    background_tasks.add_task(process_youtube_task_with_webshare, task_id, request.url, num_pairs)
+    # Process with enhanced methods in the background
+    background_tasks.add_task(process_youtube_task_with_enhanced_webshare, task_id, request.url, num_pairs)
     
     return ProcessingStatus(
         task_id=task_id, 
         status="processing", 
         progress=0.0,
-        message="Processing with Webshare free tier proxy",
+        message="Processing with enhanced extraction methods",
         estimated_count=estimated_count
     )
 
@@ -1093,6 +1098,435 @@ async def process_youtube_task_with_webshare(task_id: str, url: str, num_pairs: 
             "status": "failed",
             "message": f"Error processing YouTube transcript: {str(e)}"
         })
+
+class EnhancedYouTubeExtractor:
+    """
+    Enhanced YouTube transcript extractor that combines multiple methods
+    for better reliability with your existing WebShare setup.
+    """
+    
+    def __init__(self, webshare_manager):
+        self.webshare_manager = webshare_manager
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        }
+    
+    async def extract_video_info(self, video_id: str) -> Dict[str, str]:
+        """Get video title and basic info using oEmbed API."""
+        try:
+            oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+            
+            # Make request through WebShare proxy
+            response = await self._make_proxy_request(oembed_url)
+            
+            if response and response.status_code == 200:
+                data = response.json()
+                return {
+                    'title': data.get('title', f'YouTube Video ({video_id})'),
+                    'author': data.get('author_name', 'Unknown'),
+                    'duration': data.get('duration', 'Unknown')
+                }
+        except Exception as e:
+            logger.warning(f"Failed to get video info: {e}")
+        
+        return {'title': f'YouTube Video ({video_id})', 'author': 'Unknown', 'duration': 'Unknown'}
+    
+    async def _make_proxy_request(self, url: str, max_retries: int = 3):
+        """Make HTTP request through WebShare proxy with retry logic."""
+        for attempt in range(max_retries):
+            try:
+                # Use existing WebShare proxy setup
+                proxy_config = self.webshare_manager.setup_proxy_config()
+                
+                # Convert proxy config to requests format
+                proxy_dict = {
+                    'http': f'http://{proxy_config.proxy_username}:{proxy_config.proxy_password}@rotating-residential-proxies.all.webshare.io:8080',
+                    'https': f'http://{proxy_config.proxy_username}:{proxy_config.proxy_password}@rotating-residential-proxies.all.webshare.io:8080'
+                }
+                
+                response = requests.get(
+                    url,
+                    headers=self.headers,
+                    proxies=proxy_dict,
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    return response
+                elif response.status_code == 429:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                    
+            except Exception as e:
+                logger.warning(f"Proxy request failed (attempt {attempt + 1}): {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(1)
+                    continue
+        
+        return None
+    
+    async def extract_transcript_from_watch_page(self, video_id: str) -> Optional[str]:
+        """Extract transcript by parsing YouTube watch page through proxy."""
+        watch_url = f"https://www.youtube.com/watch?v={video_id}"
+        response = await self._make_proxy_request(watch_url)
+        
+        if not response:
+            return None
+        
+        try:
+            html_content = response.text
+            
+            # Look for ytInitialPlayerResponse in the HTML
+            patterns = [
+                r'var ytInitialPlayerResponse = ({.*?});',
+                r'"captions":\s*({[^}]+})',
+                r'"captionTracks":\s*\[([^\]]+)\]'
+            ]
+            
+            for pattern in patterns:
+                match = re.search(pattern, html_content)
+                if match:
+                    try:
+                        if pattern.startswith(r'var ytInitialPlayerResponse'):
+                            player_data = json.loads(match.group(1))
+                            transcript = await self._extract_from_player_response(player_data)
+                            if transcript:
+                                return transcript
+                    except json.JSONDecodeError:
+                        continue
+            
+            # Fallback: look for direct caption track URLs
+            caption_url_pattern = r'"baseUrl":"([^"]*timedtext[^"]*)"'
+            urls = re.findall(caption_url_pattern, html_content)
+            
+            for url in urls:
+                if 'timedtext' in url:
+                    transcript = await self._fetch_transcript_from_url(url.replace('\\u0026', '&'))
+                    if transcript:
+                        return transcript
+                        
+        except Exception as e:
+            logger.error(f"Error parsing watch page: {e}")
+        
+        return None
+    
+    async def _extract_from_player_response(self, player_data: Dict) -> Optional[str]:
+        """Extract transcript from ytInitialPlayerResponse data."""
+        try:
+            captions = player_data.get('captions', {})
+            caption_tracks = captions.get('playerCaptionsTracklistRenderer', {}).get('captionTracks', [])
+            
+            if not caption_tracks:
+                return None
+            
+            # Prefer English captions
+            selected_track = None
+            for track in caption_tracks:
+                if track.get('languageCode', '').startswith('en'):
+                    selected_track = track
+                    break
+            
+            if not selected_track and caption_tracks:
+                selected_track = caption_tracks[0]
+            
+            if selected_track:
+                base_url = selected_track.get('baseUrl')
+                if base_url:
+                    return await self._fetch_transcript_from_url(base_url)
+                    
+        except Exception as e:
+            logger.error(f"Error extracting from player response: {e}")
+        
+        return None
+    
+    async def _fetch_transcript_from_url(self, url: str) -> Optional[str]:
+        """Fetch and parse transcript from timedtext URL."""
+        if not url.startswith('http'):
+            return None
+        
+        # Ensure we get the full transcript
+        if '&fmt=' not in url:
+            url += '&fmt=srv3'
+        
+        response = await self._make_proxy_request(url)
+        if not response:
+            return None
+        
+        try:
+            # Parse XML response
+            root = ET.fromstring(response.text)
+            transcript_parts = []
+            
+            # Handle different XML formats
+            for elem in root.iter():
+                if elem.tag in ['text', 'p'] and elem.text:
+                    text = elem.text.strip()
+                    # Clean up the text
+                    text = re.sub(r'\[.*?\]', '', text)  # Remove [Music], [Applause], etc.
+                    text = re.sub(r'\s+', ' ', text)
+                    if text and len(text) > 2:
+                        transcript_parts.append(text)
+            
+            if transcript_parts:
+                full_transcript = ' '.join(transcript_parts)
+                # Final cleanup
+                full_transcript = re.sub(r'\[Music\]|\[Applause\]|\[Laughter\]', '', full_transcript)
+                full_transcript = re.sub(r'\s+', ' ', full_transcript).strip()
+                
+                return full_transcript if len(full_transcript) > 50 else None
+                
+        except ET.ParseError as e:
+            logger.error(f"XML parsing error: {e}")
+        except Exception as e:
+            logger.error(f"Error fetching transcript: {e}")
+        
+        return None
+
+# Enhanced transcript extraction function
+async def fetch_transcript_with_enhanced_webshare(video_id: str, max_retries: int = 3) -> str:
+    """
+    Enhanced transcript fetching that combines youtube-transcript-api 
+    with direct extraction methods for better reliability.
+    """
+    
+    # Initialize enhanced extractor
+    enhanced_extractor = EnhancedYouTubeExtractor(webshare_manager)
+    
+    # Method 1: Try your existing youtube-transcript-api approach first
+    try:
+        logger.info(f"Trying Method 1: youtube-transcript-api for {video_id}")
+        result = await fetch_transcript_with_webshare_free(video_id, max_retries)
+        if result and len(result.strip()) > 100:
+            logger.info("Method 1 successful")
+            return result
+    except Exception as e:
+        logger.warning(f"Method 1 failed: {e}")
+    
+    # Method 2: Try enhanced direct extraction
+    try:
+        logger.info(f"Trying Method 2: Enhanced direct extraction for {video_id}")
+        await webshare_manager.wait_for_rate_limit()
+        
+        transcript = await enhanced_extractor.extract_transcript_from_watch_page(video_id)
+        if transcript and len(transcript.strip()) > 100:
+            webshare_manager.record_successful_request()
+            logger.info("Method 2 successful")
+            return transcript
+    except Exception as e:
+        logger.warning(f"Method 2 failed: {e}")
+    
+    # Method 3: Fallback with different video URL formats
+    try:
+        logger.info(f"Trying Method 3: Alternative URL formats for {video_id}")
+        
+        # Try different URL formats that might work better
+        alternative_urls = [
+            f"https://www.youtube.com/embed/{video_id}",
+            f"https://youtu.be/{video_id}",
+            f"https://m.youtube.com/watch?v={video_id}"
+        ]
+        
+        for url in alternative_urls:
+            try:
+                await webshare_manager.wait_for_rate_limit()
+                response = await enhanced_extractor._make_proxy_request(url)
+                if response:
+                    # Try to extract any transcript information from the page
+                    html_content = response.text
+                    if 'captions' in html_content.lower() or 'transcript' in html_content.lower():
+                        # If we find caption references, try the youtube-transcript-api again
+                        ytt_api = YouTubeTranscriptApi(proxy_config=webshare_manager.proxy_config)
+                        transcript_list = ytt_api.get_transcript(video_id)
+                        transcript_text = " ".join([item['text'] for item in transcript_list])
+                        
+                        if len(transcript_text.strip()) > 100:
+                            webshare_manager.record_successful_request()
+                            logger.info("Method 3 successful")
+                            return transcript_text
+            except Exception as e:
+                logger.warning(f"Alternative URL {url} failed: {e}")
+                continue
+                
+    except Exception as e:
+        logger.warning(f"Method 3 failed: {e}")
+    
+    # If all methods fail
+    raise Exception("Could not extract transcript using any method. The video may not have captions available.")
+
+# New endpoint for getting video info
+@app.get("/youtube/info/{video_id}")
+async def get_youtube_video_info(video_id: str):
+    """Get YouTube video information including title and availability."""
+    try:
+        enhanced_extractor = EnhancedYouTubeExtractor(webshare_manager)
+        video_info = await enhanced_extractor.extract_video_info(video_id)
+        
+        return {
+            "status": "success",
+            "video_id": video_id,
+            "info": video_info
+        }
+    except Exception as e:
+        logger.error(f"Error getting video info: {e}")
+        return {
+            "status": "error",
+            "video_id": video_id,
+            "error": str(e)
+        }
+    
+
+async def process_youtube_task_with_enhanced_webshare(task_id: str, url: str, num_pairs: int):
+    """
+    Enhanced YouTube processing with multiple extraction methods.
+    This replaces your existing process_youtube_task_with_webshare function.
+    """
+    try:
+        # Validate num_pairs
+        num_pairs = max(1, min(50, int(num_pairs)))
+        
+        # Update status
+        tasks_status[task_id].update({
+            "progress": 0.1,
+            "message": "Extracting YouTube video ID"
+        })
+        
+        # Extract video ID from URL
+        try:
+            video_id = extract_youtube_id(url)
+            logger.info(f"Extracted YouTube video ID: {video_id}")
+        except ValueError as e:
+            tasks_status[task_id].update({
+                "status": "failed", 
+                "message": str(e)
+            })
+            return
+        
+        # Get video info
+        tasks_status[task_id].update({
+            "progress": 0.2,
+            "message": "Getting video information"
+        })
+        
+        enhanced_extractor = EnhancedYouTubeExtractor(webshare_manager)
+        video_info = await enhanced_extractor.extract_video_info(video_id)
+        
+        # Update status for transcript extraction
+        tasks_status[task_id].update({
+            "progress": 0.3,
+            "message": f"Fetching transcript for: {video_info['title']}"
+        })
+        
+        # Fetch transcript with enhanced methods
+        try:
+            transcript_text = await fetch_transcript_with_enhanced_webshare(video_id)
+            
+            logger.info(f"Successfully fetched transcript: {len(transcript_text)} characters")
+            
+            # Check if transcript is too short
+            if len(transcript_text.strip()) < 100:
+                tasks_status[task_id].update({
+                    "status": "failed",
+                    "message": "The transcript is too short. Please try a different video with more content."
+                })
+                return
+                
+        except Exception as e:
+            logger.error(f"Error fetching YouTube transcript: {str(e)}")
+            
+            # Provide helpful error messages
+            error_msg = str(e)
+            if "username" in error_msg.lower() or "password" in error_msg.lower():
+                tasks_status[task_id].update({
+                    "status": "failed",
+                    "message": "Webshare credentials error. Please check your username and password."
+                })
+            elif "bandwidth" in error_msg.lower():
+                tasks_status[task_id].update({
+                    "status": "failed", 
+                    "message": "Monthly bandwidth limit reached. Try again next month or upgrade to paid plan."
+                })
+            elif "not have captions" in error_msg.lower():
+                tasks_status[task_id].update({
+                    "status": "failed",
+                    "message": "This video doesn't have captions or transcripts available. Please try a different video."
+                })
+            else:
+                tasks_status[task_id].update({
+                    "status": "failed",
+                    "message": f"Failed to fetch transcript: {str(e)}"
+                })
+            return
+        
+        # Update status for QA generation
+        tasks_status[task_id].update({
+            "progress": 0.6,
+            "message": f"Generating {num_pairs} Q&A pairs from transcript"
+        })
+        
+        # Generate QA pairs from transcript
+        qa_pairs = generate_qa_pairs(transcript_text, num_pairs)
+        logger.info(f"Successfully generated {len(qa_pairs)} Q&A pairs")
+        
+        # Get usage stats
+        usage_stats = webshare_manager.get_usage_stats()
+        
+        # Update status
+        tasks_status[task_id].update({
+            "progress": 1.0,
+            "status": "completed",
+            "message": f"Processing complete ({len(qa_pairs)} Q&A pairs generated)",
+            "qa_pairs": qa_pairs,
+            "video_info": video_info,
+            "webshare_usage": usage_stats
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in enhanced YouTube processing: {str(e)}", exc_info=True)
+        tasks_status[task_id].update({
+            "status": "failed",
+            "message": f"Error processing YouTube transcript: {str(e)}"
+        })
+
+
+# Health check endpoint for YouTube functionality
+@app.get("/health/youtube")
+async def youtube_health_check():
+    """Check if YouTube transcript extraction is working."""
+    try:
+        # Test with a known working video (Rick Roll - it always has captions!)
+        test_video_id = "dQw4w9WgXcQ"
+        
+        enhanced_extractor = EnhancedYouTubeExtractor(webshare_manager)
+        video_info = await enhanced_extractor.extract_video_info(test_video_id)
+        
+        # Try to fetch a small portion of transcript
+        try:
+            transcript = await fetch_transcript_with_enhanced_webshare(test_video_id)
+            transcript_status = "working" if len(transcript) > 50 else "limited"
+        except Exception as e:
+            transcript_status = f"failed: {str(e)}"
+        
+        usage_stats = webshare_manager.get_usage_stats()
+        
+        return {
+            "status": "healthy",
+            "webshare_configured": bool(WEBSHARE_USERNAME and WEBSHARE_PASSWORD),
+            "video_info_extraction": "working" if video_info else "failed",
+            "transcript_extraction": transcript_status,
+            "webshare_usage": usage_stats
+        }
+        
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "webshare_configured": bool(WEBSHARE_USERNAME and WEBSHARE_PASSWORD)
+        }
 
 # Run the application with: uvicorn main:app --reload
 if __name__ == "__main__":
