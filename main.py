@@ -2759,6 +2759,452 @@ async def find_videos_with_captions():
         "summary": f"Found {len(videos_with_captions)} videos out of {len(test_candidates)} that likely have captions"
     }
 
+
+class AlternativeTranscriptExtractor:
+    """
+    Alternative methods when YouTube blocks all direct access
+    """
+    
+    def __init__(self):
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+    
+    async def extract_transcript(self, video_id: str) -> str:
+        """Try alternative extraction methods"""
+        
+        logger.info(f"🔄 Trying alternative extraction for video: {video_id}")
+        
+        # Method 1: Third-party transcript services
+        try:
+            transcript = await self._extract_via_third_party_services(video_id)
+            if transcript:
+                logger.info("✅ Success with third-party service")
+                return transcript
+        except Exception as e:
+            logger.warning(f"Third-party services failed: {e}")
+        
+        # Method 2: YouTube RSS/Feed approach
+        try:
+            transcript = await self._extract_via_youtube_feeds(video_id)
+            if transcript:
+                logger.info("✅ Success with YouTube feeds")
+                return transcript
+        except Exception as e:
+            logger.warning(f"YouTube feeds failed: {e}")
+        
+        # Method 3: yt-dlp approach (if available)
+        try:
+            transcript = await self._extract_via_ytdlp(video_id)
+            if transcript:
+                logger.info("✅ Success with yt-dlp")
+                return transcript
+        except Exception as e:
+            logger.warning(f"yt-dlp failed: {e}")
+        
+        raise Exception(f"All alternative extraction methods failed for video {video_id}")
+    
+    async def _extract_via_third_party_services(self, video_id: str) -> Optional[str]:
+        """Use third-party transcript services"""
+        
+        # List of free/public transcript services
+        services = [
+            {
+                "name": "YouTube To Transcript",
+                "url": "https://youtubetotranscript.com/api/transcript",
+                "method": "post",
+                "data": {"url": f"https://www.youtube.com/watch?v={video_id}"}
+            },
+            {
+                "name": "Tactiq",
+                "url": f"https://tactiq.io/api/youtube-transcript?url=https://www.youtube.com/watch?v={video_id}",
+                "method": "get"
+            },
+            {
+                "name": "NoteGPT",
+                "url": "https://notegpt.io/api/youtube-transcript",
+                "method": "post", 
+                "data": {"video_url": f"https://www.youtube.com/watch?v={video_id}"}
+            }
+        ]
+        
+        for service in services:
+            try:
+                logger.info(f"🔍 Trying {service['name']}...")
+                
+                if service["method"] == "post":
+                    response = self.session.post(
+                        service["url"],
+                        json=service.get("data", {}),
+                        timeout=30
+                    )
+                else:
+                    response = self.session.get(
+                        service["url"],
+                        timeout=30
+                    )
+                
+                if response.status_code == 200:
+                    # Try to parse the response
+                    try:
+                        data = response.json()
+                        # Different services return data in different formats
+                        transcript = self._extract_transcript_from_service_response(data, service["name"])
+                        if transcript and len(transcript) > 100:
+                            return transcript
+                    except:
+                        # If not JSON, maybe it's plain text
+                        if len(response.text) > 100:
+                            return response.text
+                
+                # Add delay between service calls
+                await asyncio.sleep(1)
+                
+            except Exception as e:
+                logger.debug(f"{service['name']} failed: {e}")
+                continue
+        
+        return None
+    
+    async def _extract_via_youtube_feeds(self, video_id: str) -> Optional[str]:
+        """Try alternative YouTube endpoints that might have transcript data"""
+        
+        alternative_endpoints = [
+            # YouTube's internal API endpoints that might be less protected
+            f"https://www.youtube.com/youtubei/v1/get_transcript?videoId={video_id}",
+            f"https://www.youtube.com/youtubei/v1/player?videoId={video_id}",
+            # Mobile endpoints
+            f"https://m.youtube.com/api/timedtext?v={video_id}&lang=en",
+            # Embed endpoints
+            f"https://www.youtube.com/embed/{video_id}?cc_load_policy=1",
+        ]
+        
+        for endpoint in alternative_endpoints:
+            try:
+                response = self.session.get(endpoint, timeout=15)
+                if response.status_code == 200 and len(response.text) > 100:
+                    # Look for transcript data in the response
+                    transcript = self._extract_transcript_from_response(response.text)
+                    if transcript:
+                        return transcript
+                
+                await asyncio.sleep(0.5)
+                
+            except Exception as e:
+                logger.debug(f"Alternative endpoint failed: {endpoint} - {e}")
+                continue
+        
+        return None
+    
+    async def _extract_via_ytdlp(self, video_id: str) -> Optional[str]:
+        """Use yt-dlp if available"""
+        try:
+            import subprocess
+            import tempfile
+            import os
+            
+            # Try to use yt-dlp to get subtitles
+            with tempfile.TemporaryDirectory() as temp_dir:
+                output_file = os.path.join(temp_dir, f"{video_id}")
+                
+                # Command to get subtitles only
+                cmd = [
+                    'yt-dlp',
+                    '--write-subs',
+                    '--write-auto-subs',
+                    '--sub-lang', 'en',
+                    '--skip-download',
+                    '--output', output_file,
+                    f'https://www.youtube.com/watch?v={video_id}'
+                ]
+                
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+                
+                if result.returncode == 0:
+                    # Look for subtitle files
+                    subtitle_files = [f for f in os.listdir(temp_dir) if f.endswith(('.vtt', '.srt'))]
+                    
+                    for subtitle_file in subtitle_files:
+                        subtitle_path = os.path.join(temp_dir, subtitle_file)
+                        with open(subtitle_path, 'r', encoding='utf-8') as f:
+                            subtitle_content = f.read()
+                            transcript = self._parse_subtitle_file(subtitle_content)
+                            if transcript:
+                                return transcript
+        
+        except (ImportError, subprocess.TimeoutExpired, FileNotFoundError):
+            # yt-dlp not available or failed
+            pass
+        except Exception as e:
+            logger.debug(f"yt-dlp extraction failed: {e}")
+        
+        return None
+    
+    def _extract_transcript_from_service_response(self, data: Dict, service_name: str) -> Optional[str]:
+        """Extract transcript from third-party service response"""
+        try:
+            # Different services have different response formats
+            if service_name == "YouTube To Transcript":
+                if "transcript" in data:
+                    return data["transcript"]
+                elif "text" in data:
+                    return data["text"]
+            
+            elif service_name == "Tactiq":
+                if "transcript" in data:
+                    return data["transcript"]
+                elif "content" in data:
+                    return data["content"]
+            
+            elif service_name == "NoteGPT":
+                if "transcript" in data:
+                    return data["transcript"]
+                elif "result" in data:
+                    return data["result"]
+            
+            # Generic extraction for unknown formats
+            for key in ["transcript", "text", "content", "result", "data"]:
+                if key in data and isinstance(data[key], str) and len(data[key]) > 100:
+                    return data[key]
+            
+        except Exception as e:
+            logger.debug(f"Failed to extract from {service_name} response: {e}")
+        
+        return None
+    
+    def _extract_transcript_from_response(self, response_text: str) -> Optional[str]:
+        """Extract transcript from various response formats"""
+        try:
+            # Look for common transcript patterns
+            import re
+            
+            # JSON with transcript data
+            json_patterns = [
+                r'"transcript":\s*"([^"]+)"',
+                r'"text":\s*"([^"]+)"',
+                r'"content":\s*"([^"]+)"'
+            ]
+            
+            for pattern in json_patterns:
+                matches = re.findall(pattern, response_text)
+                if matches:
+                    transcript = ' '.join(matches)
+                    if len(transcript) > 100:
+                        return transcript
+            
+            # Look for subtitle-like content
+            if 'WEBVTT' in response_text or '-->' in response_text:
+                return self._parse_subtitle_file(response_text)
+            
+        except Exception as e:
+            logger.debug(f"Failed to extract transcript from response: {e}")
+        
+        return None
+    
+    def _parse_subtitle_file(self, content: str) -> Optional[str]:
+        """Parse VTT or SRT subtitle files"""
+        try:
+            lines = content.split('\n')
+            transcript_parts = []
+            
+            for line in lines:
+                line = line.strip()
+                # Skip timestamps, numbers, and WEBVTT headers
+                if (not line or 
+                    line.isdigit() or 
+                    '-->' in line or 
+                    line.startswith('WEBVTT') or
+                    line.startswith('NOTE')):
+                    continue
+                
+                # Remove HTML tags
+                import re
+                line = re.sub(r'<[^>]+>', '', line)
+                
+                if len(line) > 2:
+                    transcript_parts.append(line)
+            
+            if transcript_parts:
+                return ' '.join(transcript_parts)
+            
+        except Exception as e:
+            logger.debug(f"Failed to parse subtitle file: {e}")
+        
+        return None
+
+
+# Integration with your existing system
+class FallbackTranscriptExtractor:
+    """
+    Fallback system that tries multiple approaches
+    """
+    
+    def __init__(self, decodo_username: str = None, decodo_password: str = None):
+        self.decodo_username = decodo_username
+        self.decodo_password = decodo_password
+        self.alternative_extractor = AlternativeTranscriptExtractor()
+    
+    async def extract_transcript(self, video_id: str) -> str:
+        """Try all available extraction methods"""
+        
+        logger.info(f"🎯 Starting fallback extraction for video: {video_id}")
+        
+        # First, try the original ultimate extractor (if not completely blocked)
+        try:
+            from your_existing_code import UltimateYouTubeExtractor
+            ultimate_extractor = UltimateYouTubeExtractor(self.decodo_username, self.decodo_password)
+            transcript = await ultimate_extractor.extract_transcript(video_id)
+            if transcript:
+                logger.info("✅ Success with ultimate extractor")
+                return transcript
+        except Exception as e:
+            logger.warning(f"Ultimate extractor failed: {e}")
+        
+        # If that fails, try alternative methods
+        try:
+            transcript = await self.alternative_extractor.extract_transcript(video_id)
+            if transcript:
+                logger.info("✅ Success with alternative methods")
+                return transcript
+        except Exception as e:
+            logger.warning(f"Alternative methods failed: {e}")
+        
+        # Last resort: Provide instructions for manual extraction
+        raise Exception(f"""
+All automatic extraction methods failed for video {video_id}.
+
+Manual alternatives:
+1. Visit: https://www.youtube.com/watch?v={video_id}
+2. Click the "..." menu below the video
+3. Select "Show transcript" if available
+4. Copy the transcript manually
+
+Third-party options:
+1. Try: https://youtubetotranscript.com/
+2. Try: https://tactiq.io/tools/youtube-transcript
+3. Try: https://notegpt.io/youtube-transcript-generator
+
+For automated solutions, consider:
+1. Using a different server/hosting provider
+2. Implementing browser automation with Selenium/Playwright
+3. Using a premium transcript service API
+4. Setting up your own proxy infrastructure
+
+The issue appears to be that YouTube has implemented strong anti-bot protection
+that blocks most automated access methods from your current infrastructure.
+""")
+
+
+# Updated integration for your main.py
+fallback_extractor = None
+
+def initialize_fallback_extractor():
+    global fallback_extractor
+    
+    fallback_extractor = FallbackTranscriptExtractor(
+        decodo_username=DECODO_USERNAME,
+        decodo_password=DECODO_PASSWORD
+    )
+    logger.info("✅ Fallback transcript extractor initialized")
+
+# Replace your fetch_transcript_that_actually_works function:
+async def fetch_transcript_that_actually_works(video_id: str) -> str:
+    global fallback_extractor
+    
+    if not fallback_extractor:
+        initialize_fallback_extractor()
+    
+    logger.info(f"🎬 Starting fallback extraction for video: {video_id}")
+    
+    try:
+        transcript = await fallback_extractor.extract_transcript(video_id)
+        
+        if transcript and len(transcript.strip()) > 100:
+            logger.info(f"✅ Successfully extracted {len(transcript)} characters")
+            return transcript
+        else:
+            raise Exception("Extracted transcript was too short or empty")
+            
+    except Exception as e:
+        logger.error(f"❌ All extraction methods failed: {str(e)}")
+        raise Exception(f"Could not extract transcript: {str(e)}")
+
+# Add these test endpoints
+@app.get("/debug/test-alternative-services/{video_id}")
+async def test_alternative_services(video_id: str):
+    """Test alternative transcript services"""
+    
+    alternative_extractor = AlternativeTranscriptExtractor()
+    
+    try:
+        transcript = await alternative_extractor.extract_transcript(video_id)
+        
+        return {
+            "status": "success",
+            "video_id": video_id,
+            "transcript_length": len(transcript),
+            "sample": transcript[:300] + "..." if len(transcript) > 300 else transcript,
+            "method": "alternative_services"
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "video_id": video_id,
+            "error": str(e),
+            "suggestions": [
+                "Try the manual extraction URLs provided in the error message",
+                "Consider using browser automation with Selenium/Playwright",
+                "Use a different hosting provider that isn't blocked by YouTube",
+                "Implement your own proxy infrastructure"
+            ]
+        }
+
+@app.get("/debug/manual-extraction-guide/{video_id}")
+async def get_manual_extraction_guide(video_id: str):
+    """Provide manual extraction instructions"""
+    
+    return {
+        "video_id": video_id,
+        "video_url": f"https://www.youtube.com/watch?v={video_id}",
+        "manual_steps": [
+            "1. Open the video URL above in your browser",
+            "2. Look for the CC (closed captions) button in the video controls",
+            "3. Click the three dots (...) menu below the video",
+            "4. Select 'Show transcript' if available",
+            "5. Copy the transcript text that appears on the right side"
+        ],
+        "third_party_tools": [
+            {
+                "name": "YouTube To Transcript",
+                "url": "https://youtubetotranscript.com/",
+                "instructions": "Paste the YouTube URL and click 'Get Transcript'"
+            },
+            {
+                "name": "Tactiq YouTube Transcript Generator",
+                "url": "https://tactiq.io/tools/youtube-transcript",
+                "instructions": "Enter the YouTube URL and generate transcript"
+            },
+            {
+                "name": "NoteGPT YouTube Transcript",
+                "url": "https://notegpt.io/youtube-transcript-generator",
+                "instructions": "Paste YouTube link and click Generate"
+            }
+        ],
+        "api_alternatives": [
+            "Consider using AssemblyAI's YouTube transcript API",
+            "Use Rev.ai's async speech-to-text service",
+            "Try Google Cloud Speech-to-Text with yt-dlp audio extraction",
+            "Use OpenAI Whisper with downloaded audio"
+        ]
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
