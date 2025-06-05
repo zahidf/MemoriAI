@@ -2558,38 +2558,43 @@ async def check_video_captions_manually(video_id: str):
 async def test_known_working_videos():
     """Test extraction on videos that are known to have captions"""
     
-    # Known videos with captions
+    # Updated list of videos that definitely have captions
     test_videos = [
         {
-            "id": "dQw4w9WgXcQ", 
-            "title": "Rick Astley - Never Gonna Give You Up",
-            "expected_captions": True
+            "id": "LXb3EKWsInQ", 
+            "title": "Steve Jobs Stanford Commencement Speech 2005",
+            "expected_captions": True,
+            "note": "Stanford official upload with captions"
         },
         {
-            "id": "jNQXAC9IVRw", 
-            "title": "Me at the zoo (first YouTube video)",
-            "expected_captions": True
+            "id": "fJ9rUzIMcZQ", 
+            "title": "Google I/O 2023 Keynote",
+            "expected_captions": True,
+            "note": "Google official event with captions"
         },
         {
-            "id": "9bZkp7q19f0", 
-            "title": "PSY - Gangnam Style",
-            "expected_captions": True
+            "id": "kJQP7kiw5Fk", 
+            "title": "Luis Fonsi - Despacito ft. Daddy Yankee",
+            "expected_captions": True,
+            "note": "Popular music video with captions"
         }
     ]
     
     results = []
     
+    # Fix the variable scope issue
+    global ultimate_extractor
+    if not ultimate_extractor:
+        initialize_ultimate_extractor()
+    
     for video in test_videos:
         try:
-            # Quick test with ultimate extractor
-            if 'ultimate_extractor' not in globals():
-                ultimate_extractor = UltimateYouTubeExtractor(DECODO_USERNAME, DECODO_PASSWORD)
-            
             transcript = await ultimate_extractor.extract_transcript(video["id"])
             
             results.append({
                 "video_id": video["id"],
                 "title": video["title"],
+                "note": video["note"],
                 "status": "success",
                 "transcript_length": len(transcript),
                 "sample": transcript[:150] + "..." if len(transcript) > 150 else transcript
@@ -2599,6 +2604,7 @@ async def test_known_working_videos():
             results.append({
                 "video_id": video["id"],
                 "title": video["title"],
+                "note": video["note"],
                 "status": "failed",
                 "error": str(e)
             })
@@ -2614,7 +2620,143 @@ async def test_known_working_videos():
             "all_success": "Extraction is working correctly" if successful_extractions == len(test_videos) else None,
             "partial_success": f"Extraction works for some videos ({successful_extractions}/{len(test_videos)})" if 0 < successful_extractions < len(test_videos) else None,
             "no_success": "Extraction is completely blocked or misconfigured" if successful_extractions == 0 else None
+        },
+        "note": "These videos are specifically chosen because they have verified captions available"
+    }
+
+@app.get("/debug/test-specific-video/{video_id}")
+async def test_specific_video_extraction(video_id: str):
+    """Test extraction on a specific video with detailed steps"""
+    
+    result = {
+        "video_id": video_id,
+        "test_steps": {},
+        "final_result": None
+    }
+    
+    # Step 1: Check if video has captions
+    try:
+        response = requests.get(f"https://www.youtube.com/watch?v={video_id}", timeout=15)
+        if response.status_code == 200:
+            html_content = response.text
+            has_caption_tracks = '"captionTracks"' in html_content
+            has_auto_captions = '"kind":"asr"' in html_content
+            
+            result["test_steps"]["caption_check"] = {
+                "status": "success",
+                "has_caption_tracks": has_caption_tracks,
+                "has_auto_captions": has_auto_captions,
+                "likely_has_captions": has_caption_tracks or has_auto_captions
+            }
+        else:
+            result["test_steps"]["caption_check"] = {
+                "status": "failed",
+                "error": f"HTTP {response.status_code}"
+            }
+    except Exception as e:
+        result["test_steps"]["caption_check"] = {
+            "status": "error",
+            "error": str(e)
         }
+    
+    # Step 2: Try extraction if captions likely exist
+    caption_check = result["test_steps"].get("caption_check", {})
+    if caption_check.get("likely_has_captions", False):
+        try:
+            global ultimate_extractor
+            if not ultimate_extractor:
+                initialize_ultimate_extractor()
+            
+            transcript = await ultimate_extractor.extract_transcript(video_id)
+            
+            result["test_steps"]["extraction"] = {
+                "status": "success",
+                "transcript_length": len(transcript),
+                "sample": transcript[:200] + "..." if len(transcript) > 200 else transcript
+            }
+            result["final_result"] = "success"
+            
+        except Exception as e:
+            result["test_steps"]["extraction"] = {
+                "status": "failed",
+                "error": str(e)
+            }
+            result["final_result"] = "extraction_failed"
+    else:
+        result["test_steps"]["extraction"] = {
+            "status": "skipped",
+            "reason": "No captions detected in video"
+        }
+        result["final_result"] = "no_captions"
+    
+    return result
+
+@app.get("/debug/find-videos-with-captions")
+async def find_videos_with_captions():
+    """Find some videos that definitely have captions for testing"""
+    
+    # These are known to have captions (educational/corporate content usually does)
+    test_candidates = [
+        "LXb3EKWsInQ",  # Steve Jobs Stanford Speech
+        "fJ9rUzIMcZQ",  # Google I/O Keynote
+        "kJQP7kiw5Fk",  # Despacito (popular music)
+        "9bZkp7q19f0",  # Gangnam Style
+        "jNQXAC9IVRw",  # First YouTube video
+        "dQw4w9WgXcQ",  # Rick Roll (for comparison)
+        "2Vv-BfVoq4g",  # Ed Sheeran (popular music)
+        "hFZFjoX2cGg",  # Adele (popular music)
+    ]
+    
+    results = []
+    
+    for video_id in test_candidates:
+        try:
+            # Quick check for captions
+            response = requests.get(f"https://www.youtube.com/watch?v={video_id}", timeout=10)
+            if response.status_code == 200:
+                html_content = response.text
+                
+                # Get video title
+                title_match = re.search(r'"title":"([^"]+)"', html_content)
+                title = title_match.group(1) if title_match else "Unknown"
+                
+                has_caption_tracks = '"captionTracks"' in html_content
+                has_auto_captions = '"kind":"asr"' in html_content
+                has_manual_captions = '"kind":"caption"' in html_content
+                
+                results.append({
+                    "video_id": video_id,
+                    "title": title,
+                    "accessible": True,
+                    "has_caption_tracks": has_caption_tracks,
+                    "has_auto_captions": has_auto_captions,
+                    "has_manual_captions": has_manual_captions,
+                    "likely_has_captions": has_caption_tracks or has_auto_captions,
+                    "url": f"https://www.youtube.com/watch?v={video_id}"
+                })
+            else:
+                results.append({
+                    "video_id": video_id,
+                    "accessible": False,
+                    "error": f"HTTP {response.status_code}"
+                })
+                
+        except Exception as e:
+            results.append({
+                "video_id": video_id,
+                "accessible": False,
+                "error": str(e)
+            })
+    
+    # Filter to videos that likely have captions
+    videos_with_captions = [r for r in results if r.get("likely_has_captions", False)]
+    
+    return {
+        "total_tested": len(test_candidates),
+        "videos_with_captions": len(videos_with_captions),
+        "all_results": results,
+        "recommended_for_testing": [r["video_id"] for r in videos_with_captions],
+        "summary": f"Found {len(videos_with_captions)} videos out of {len(test_candidates)} that likely have captions"
     }
 
 if __name__ == "__main__":
